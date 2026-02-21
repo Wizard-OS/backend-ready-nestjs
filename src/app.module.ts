@@ -4,8 +4,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { AppService } from './app.service';
 import { AppController } from './app.controller';
-import { CommonModule } from './common/common.module';
 import { AuthModule } from './auth/auth.module';
+import { CommonModule } from './common/common.module';
 
 @Module({
   imports: [
@@ -13,6 +13,7 @@ import { AuthModule } from './auth/auth.module';
     TypeOrmModule.forRoot({
       type: 'postgres',
       host: process.env.DB_HOST,
+      // @ts-expect-error - We are sure that DB_PORT is defined, otherwise the app won't start
       port: +process.env.DB_PORT,
       database: process.env.DB_NAME,
       username: process.env.DB_USERNAME,
