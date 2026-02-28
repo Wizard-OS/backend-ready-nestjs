@@ -19,6 +19,16 @@ import { ClinicalNotesModule } from './clinical-notes/clinical-notes.module';
 import { ClinicalRecordsModule } from './clinical-records/clinical-records.module';
 import { TreatmentSessionsModule } from './treatment-sessions/treatment-sessions.module';
 
+import { PatientsModule } from './patients/patients.module';
+import { AppointmentsModule } from './appointments/appointments.module';
+import { InvoicesModule } from './invoices/invoices.module';
+import { PaymentsModule } from './payments/payments.module';
+import { TreatmentsModule } from './treatments/treatments.module';
+import { ClinicalRecordsModule } from './clinical-records/clinical-records.module';
+import { ClinicalNotesModule } from './clinical-notes/clinical-notes.module';
+import { TreatmentSessionsModule } from './treatment-sessions/treatment-sessions.module';
+import { RemindersModule } from './reminders/reminders.module';
+
 @Module({
   imports: [
     ConfigModule.forRoot(),
