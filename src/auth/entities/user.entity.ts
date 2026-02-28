@@ -3,10 +3,13 @@ import {
   BeforeUpdate,
   Column,
   Entity,
+  Index,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+import { ValidRoles } from '../interfaces';
 
 @Entity('users')
+@Index(['email'], { unique: true })
 export class User {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -22,18 +25,34 @@ export class User {
   password: string;
 
   @Column('text')
-  fullName: string;
+  firstName: string;
+
+  @Column('text')
+  lastName: string;
 
   @Column('bool', {
     default: true,
   })
   isActive: boolean;
 
-  @Column('text', {
+  @Column('enum', {
+    enum: ValidRoles,
     array: true,
-    default: ['user'],
+    default: [ValidRoles.odontologist],
   })
-  roles: string[];
+  roles: ValidRoles[];
+
+  // @OneToMany(() => Appointment, (appointment) => appointment.dentist)
+  // appointments: Appointment[];
+  //
+  // @OneToMany(() => ClinicalNote, (note) => note.author)
+  // clinicalNotes: ClinicalNote[];
+  //
+  // @CreateDateColumn()
+  // createdAt: Date;
+  //
+  // @UpdateDateColumn()
+  // updatedAt: Date;
 
   @BeforeInsert()
   checkFieldsBeforeInsert() {
