@@ -1,12 +1,16 @@
 import {
   Column,
+  CreateDateColumn,
   Entity,
   JoinColumn,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
 
+import { User } from '../../auth/entities/user.entity';
 import { Patient } from '../../patients/entities/patient.entity';
+import { Reminder } from '../../reminders/entities/reminder.entity';
 import { AppointmentStatus } from '../interfaces/AppointmentStatus.enum';
 
 @Entity('appointments')
@@ -26,8 +30,13 @@ export class Appointment {
   @Column('uuid')
   patientId: string;
 
-  // TODO: Change this to the relationship with the  doctor
-  @Column('text')
+  @ManyToOne(() => User, (user) => user.appointments, {
+    onDelete: 'SET NULL',
+  })
+  @JoinColumn({ name: 'dentistId' })
+  dentist: User;
+
+  @Column({ nullable: true })
   dentistId: string;
 
   @Column('text', {
@@ -54,13 +63,13 @@ export class Appointment {
     enum: AppointmentStatus,
   })
   status: AppointmentStatus;
-  //
-  // @Column({ nullable: true })
-  // reason: string;
-  //
-  // @OneToMany(() => Reminder, (reminder) => reminder.appointment)
-  // reminders: Reminder[];
-  //
-  // @CreateDateColumn()
-  // createdAt: Date;
+
+  @Column({ nullable: true })
+  reason: string;
+
+  @OneToMany(() => Reminder, (reminder) => reminder.appointment)
+  reminders: Reminder[];
+
+  @CreateDateColumn()
+  createdAt: Date;
 }
