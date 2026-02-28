@@ -4,9 +4,20 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { AppService } from './app.service';
 import { AppController } from './app.controller';
+
 import { AuthModule } from './auth/auth.module';
 import { CommonModule } from './common/common.module';
 import { SeedModule } from './seed/seed.module';
+
+import { PatientsModule } from './patients/patients.module';
+import { AppointmentsModule } from './appointments/appointments.module';
+import { InvoicesModule } from './invoices/invoices.module';
+import { PaymentsModule } from './payments/payments.module';
+import { TreatmentsModule } from './treatments/treatments.module';
+import { ClinicalRecordsModule } from './clinical-records/clinical-records.module';
+import { ClinicalNotesModule } from './clinical-notes/clinical-notes.module';
+import { TreatmentSessionsModule } from './treatment-sessions/treatment-sessions.module';
+import { RemindersModule } from './reminders/reminders.module';
 
 @Module({
   imports: [
@@ -26,6 +37,15 @@ import { SeedModule } from './seed/seed.module';
     CommonModule,
     AuthModule,
     SeedModule,
+    PatientsModule,
+    AppointmentsModule,
+    InvoicesModule,
+    PaymentsModule,
+    TreatmentsModule,
+    ClinicalRecordsModule,
+    ClinicalNotesModule,
+    TreatmentSessionsModule,
+    RemindersModule,
   ],
   controllers: [AppController],
   providers: [AppService],
