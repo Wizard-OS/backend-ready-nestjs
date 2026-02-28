@@ -27,13 +27,9 @@ export class SeedService {
   private async insertUsers() {
     const seedUsers = initialData.users;
 
-    const users: User[] = [];
+    const users = seedUsers.map((user) => this.userRepository.create(user));
 
-    seedUsers.forEach((user) => {
-      users.push(this.userRepository.create(user));
-    });
-
-    const dbUsers = await this.userRepository.save(seedUsers);
+    const dbUsers = await this.userRepository.save(users);
 
     return dbUsers[0];
   }

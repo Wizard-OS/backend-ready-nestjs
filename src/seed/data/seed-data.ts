@@ -1,10 +1,12 @@
 import * as bcrypt from 'bcrypt';
+import { ValidRoles } from '../../auth/interfaces';
 
-interface SeedUser {
+export interface SeedUser {
   email: string;
-  fullName: string;
+  firstName: string;
+  lastName: string;
   password: string;
-  roles: string[];
+  roles: ValidRoles[];
 }
 
 interface SeedData {
@@ -15,15 +17,17 @@ export const initialData: SeedData = {
   users: [
     {
       email: 'test1@google.com',
-      fullName: 'Test One',
+      firstName: 'Test',
+      lastName: 'One',
       password: bcrypt.hashSync('Abc123', 10),
-      roles: ['admin'],
+      roles: [ValidRoles.admin],
     },
     {
       email: 'test2@google.com',
-      fullName: 'Test Two',
+      firstName: 'Test',
+      lastName: 'Two',
       password: bcrypt.hashSync('Abc123', 10),
-      roles: ['user', 'super'],
+      roles: [ValidRoles.user, ValidRoles.superUser],
     },
   ],
 };
