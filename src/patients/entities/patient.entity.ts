@@ -2,13 +2,19 @@ import {
   BeforeInsert,
   BeforeUpdate,
   Column,
+  CreateDateColumn,
+  DeleteDateColumn,
   Entity,
   OneToMany,
+  OneToOne,
   PrimaryGeneratedColumn,
+  UpdateDateColumn,
 } from 'typeorm';
 
 import { Gender } from '../../common/interfaces/gender.enum';
 import { Appointment } from '../../appointments/entities/appointment.entity';
+import { ClinicalRecord } from '../../clinical-records/entities/clinical-record.entity';
+import { Invoice } from '../../invoices/entities/invoice.entity';
 
 @Entity('patients')
 export class Patient {
@@ -49,22 +55,22 @@ export class Patient {
   @OneToMany(() => Appointment, (appointment) => appointment.patient)
   appointments: Appointment[];
 
-  // @OneToOne(() => ClinicalRecord, (record) => record.patient, {
-  //   cascade: true,
-  // })
-  // clinicalRecord: ClinicalRecord;
-  //
-  // @OneToMany(() => Invoice, (invoice) => invoice.patient)
-  // invoices: Invoice[];
-  //
-  // @CreateDateColumn()
-  // createdAt: Date;
-  //
-  // @UpdateDateColumn()
-  // updatedAt: Date;
-  //
-  // @DeleteDateColumn()
-  // deletedAt?: Date;
+  @OneToOne(() => ClinicalRecord, (record) => record.patient, {
+    cascade: true,
+  })
+  clinicalRecord: ClinicalRecord;
+
+  @OneToMany(() => Invoice, (invoice) => invoice.patient)
+  invoices: Invoice[];
+
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
+
+  @DeleteDateColumn()
+  deletedAt?: Date;
 
   @BeforeInsert()
   checkFieldsBeforeInsert() {
