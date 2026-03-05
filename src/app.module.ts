@@ -18,23 +18,43 @@ import { AppointmentsModule } from './appointments/appointments.module';
 import { ClinicalNotesModule } from './clinical-notes/clinical-notes.module';
 import { ClinicalRecordsModule } from './clinical-records/clinical-records.module';
 import { TreatmentSessionsModule } from './treatment-sessions/treatment-sessions.module';
+import { ClinicMembershipsModule } from './clinic-memberships/clinic-memberships.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot(),
+    // I18nModule.forRoot({
+    //   fallbackLanguage: 'es',
+    //   loaderOptions: {
+    //     path: path.join(__dirname, '/i18n/'),
+    //     watch: true,
+    //   },
+    //   resolvers: [
+    //     { use: QueryResolver, options: ['lang'] },
+    //     AcceptLanguageResolver,
+    //     new HeaderResolver(['x-custom-lang']),
+    //   ],
+    //   typesOutputPath: path.join(
+    //     __dirname,
+    //     '../src/generated/i18n.generated.ts',
+    //   ),
+    // }),
     TypeOrmModule.forRoot({
       type: 'postgres',
-      host: process.env.DB_HOST,
-      // @ts-expect-error - We are sure that DB_PORT is defined, otherwise the app won't start
-      port: +process.env.DB_PORT,
-      database: process.env.DB_NAME,
-      username: process.env.DB_USERNAME,
-      password: process.env.DB_PASSWORD,
+      host: process.env.DB_HOST || '127.0.0.1',
+      port: +(process.env.DB_PORT || 5432),
+      database: process.env.DB_NAME || 'DentalHubDB',
+      username: process.env.DB_USERNAME || 'postgres',
+      password: process.env.DB_PASSWORD || 'postgres',
       autoLoadEntities: true,
-      synchronize: true,
+      synchronize: process.env.DB_SYNCHRONIZE !== 'false',
+      retryAttempts: 10,
+      retryDelay: 3000,
     }),
 
     CommonModule,
+    ClinicsModule,
+    ClinicMembershipsModule,
     AuthModule,
     SeedModule,
     PatientsModule,
