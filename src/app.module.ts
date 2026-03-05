@@ -1,6 +1,14 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+//
+// import {
+//   I18nModule,
+//   AcceptLanguageResolver,
+//   HeaderResolver,
+//   QueryResolver,
+// } from 'nestjs-i18n';
+import * as path from 'path';
 
 import { AppService } from './app.service';
 import { AppController } from './app.controller';

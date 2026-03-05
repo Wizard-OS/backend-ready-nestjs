@@ -18,7 +18,7 @@ export class Treatment {
   @Column({ type: 'text', nullable: true })
   description: string;
 
-  @Column('int')
+  @Column({ type: 'decimal', precision: 12, scale: 2 })
   basePrice: string;
 
   @Column({ default: true })
