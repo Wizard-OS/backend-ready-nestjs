@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { PassportModule } from '@nestjs/passport';
@@ -8,14 +8,18 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { User } from './entities/user.entity';
 import { JwtStrategy } from './strategies/jwt.strategy';
+import { ClinicMembership } from '../clinic-memberships/entities/clinic-membership.entity';
+import { ClinicScopeGuard } from './guards/clinic-scope.guard';
+import { UserRoleGuard } from './guards/user-role.guard';
 
+@Global()
 @Module({
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
+  providers: [AuthService, JwtStrategy, ClinicScopeGuard, UserRoleGuard],
   imports: [
     ConfigModule,
 
-    TypeOrmModule.forFeature([User]),
+    TypeOrmModule.forFeature([User, ClinicMembership]),
 
     PassportModule.register({ defaultStrategy: 'jwt' }),
 
@@ -40,6 +44,13 @@ import { JwtStrategy } from './strategies/jwt.strategy';
     // }
     // })
   ],
-  exports: [TypeOrmModule, JwtStrategy, PassportModule, JwtModule],
+  exports: [
+    TypeOrmModule,
+    JwtStrategy,
+    PassportModule,
+    JwtModule,
+    ClinicScopeGuard,
+    UserRoleGuard,
+  ],
 })
 export class AuthModule {}

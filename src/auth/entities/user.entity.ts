@@ -13,6 +13,7 @@ import {
 import { ValidRoles } from '../interfaces';
 import { Appointment } from '../../appointments/entities/appointment.entity';
 import { ClinicalNote } from '../../clinical-notes/entities/clinical-note.entity';
+import { ClinicMembership } from '../../clinic-memberships/entities/clinic-membership.entity';
 
 @Entity('users')
 @Index(['email'], { unique: true })
@@ -53,6 +54,9 @@ export class User {
 
   @OneToMany(() => ClinicalNote, (note) => note.author)
   clinicalNotes: ClinicalNote[];
+
+  @OneToMany(() => ClinicMembership, (membership) => membership.user)
+  memberships: ClinicMembership[];
 
   @CreateDateColumn()
   createdAt: Date;
