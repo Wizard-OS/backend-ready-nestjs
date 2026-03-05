@@ -7,7 +7,10 @@ import {
 } from 'typeorm';
 
 import { ReminderType } from '../interfaces/reminder-type.enum';
+import { ReminderStatus } from '../interfaces/reminder-status.enum';
 import { Appointment } from '../../appointments/entities/appointment.entity';
+import { NotificationChannel } from '../../common/interfaces/notification-channel.enum';
+import { MessageTemplate } from '../../message-templates/entities/message-template.entity';
 
 @Entity('reminders')
 export class Reminder {
@@ -29,12 +32,33 @@ export class Reminder {
   })
   type: ReminderType;
 
-  @Column()
-  channel: string;
+  @ManyToOne(() => MessageTemplate, {
+    onDelete: 'SET NULL',
+  })
+  @JoinColumn({ name: 'templateId' })
+  template: MessageTemplate;
+
+  @Column('uuid', { nullable: true })
+  templateId: string | null;
+
+  @Column('enum', {
+    enum: NotificationChannel,
+    default: NotificationChannel.EMAIL,
+  })
+  channel: NotificationChannel;
+
+  @Column('enum', {
+    enum: ReminderStatus,
+    default: ReminderStatus.SCHEDULED,
+  })
+  status: ReminderStatus;
 
   @Column({ type: 'timestamp' })
   scheduledAt: Date;
 
   @Column({ type: 'timestamp', nullable: true })
-  sentAt: Date;
+  sentAt: Date | null;
+
+  @Column({ type: 'text', nullable: true })
+  error: string | null;
 }
