@@ -5,6 +5,8 @@ import {
   CreateDateColumn,
   DeleteDateColumn,
   Entity,
+  JoinColumn,
+  ManyToOne,
   OneToMany,
   OneToOne,
   PrimaryGeneratedColumn,
@@ -15,11 +17,21 @@ import { Gender } from '../../common/interfaces/gender.enum';
 import { Appointment } from '../../appointments/entities/appointment.entity';
 import { ClinicalRecord } from '../../clinical-records/entities/clinical-record.entity';
 import { Invoice } from '../../invoices/entities/invoice.entity';
+import { Clinic } from '../../clinics/entities/clinic.entity';
 
 @Entity('patients')
 export class Patient {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  @ManyToOne(() => Clinic, (clinic) => clinic.patients, {
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({ name: 'clinicId' })
+  clinic: Clinic;
+
+  @Column('uuid', { nullable: true })
+  clinicId: string | null;
 
   @Column('text', {
     unique: true,
@@ -74,7 +86,9 @@ export class Patient {
 
   @BeforeInsert()
   checkFieldsBeforeInsert() {
-    this.email = this.email.toLowerCase().trim();
+    if (this.email) {
+      this.email = this.email.toLowerCase().trim();
+    }
   }
 
   @BeforeUpdate()

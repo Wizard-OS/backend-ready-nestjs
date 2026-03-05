@@ -1,17 +1,30 @@
-import { IsEmail, IsEnum, IsOptional, IsString } from 'class-validator';
+import {
+  IsDateString,
+  IsEmail,
+  IsEnum,
+  IsOptional,
+  IsString,
+  IsUUID,
+} from 'class-validator';
 
 import { Gender } from '../../common/interfaces/gender.enum';
 
 export class CreatePatientDto {
-  @IsString()
+  @IsUUID()
+  clinicId: string;
+
+  @IsOptional()
   @IsEmail()
-  email: string;
+  email?: string;
 
   @IsString()
-  name: string;
+  firstName: string;
 
   @IsString()
-  surnames: string;
+  lastName: string;
+
+  @IsDateString()
+  birthDate: Date;
 
   @IsEnum(Gender, {
     message: 'gender must be a valid enum value',
