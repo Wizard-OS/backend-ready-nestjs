@@ -6,20 +6,30 @@ import {
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
+  UpdateDateColumn,
 } from 'typeorm';
 
 import { User } from '../../auth/entities/user.entity';
+import { AppointmentType } from './appointment-type.entity';
+import { Clinic } from '../../clinics/entities/clinic.entity';
 import { Patient } from '../../patients/entities/patient.entity';
 import { Reminder } from '../../reminders/entities/reminder.entity';
 import { AppointmentStatus } from '../interfaces/AppointmentStatus.enum';
+import { ClinicMembership } from '../../clinic-memberships/entities/clinic-membership.entity';
 
 @Entity('appointments')
 export class Appointment {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column('timestamp')
-  date: Date;
+  @ManyToOne(() => Clinic, (clinic) => clinic.appointments, {
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({ name: 'clinicId' })
+  clinic: Clinic;
+
+  @Column('uuid', { nullable: true })
+  clinicId: string | null;
 
   @ManyToOne(() => Patient, (patient) => patient.appointments, {
     onDelete: 'CASCADE',
@@ -39,15 +49,27 @@ export class Appointment {
   @Column({ nullable: true })
   dentistId: string;
 
-  @Column('text', {
-    unique: true,
-  })
-  email: string;
+  @ManyToOne(
+    () => ClinicMembership,
+    (membership) => membership.appointments,
+    {
+      onDelete: 'SET NULL',
+    },
+  )
+  @JoinColumn({ name: 'professionalMembershipId' })
+  professionalMembership: ClinicMembership;
 
-  @Column('boolean', {
-    default: false,
+  @Column('uuid', { nullable: true })
+  professionalMembershipId: string | null;
+
+  @ManyToOne(() => AppointmentType, (appointmentType) => appointmentType.appointments, {
+    onDelete: 'SET NULL',
   })
-  completed: boolean;
+  @JoinColumn({ name: 'appointmentTypeId' })
+  appointmentType: AppointmentType;
+
+  @Column('uuid', { nullable: true })
+  appointmentTypeId: string | null;
 
   @Column('text')
   description: string;
@@ -67,9 +89,18 @@ export class Appointment {
   @Column({ nullable: true })
   reason: string;
 
+  @Column('uuid', { nullable: true })
+  createdByMembershipId: string | null;
+
+  @Column({ nullable: true, type: 'text' })
+  cancelReason: string | null;
+
   @OneToMany(() => Reminder, (reminder) => reminder.appointment)
   reminders: Reminder[];
 
   @CreateDateColumn()
   createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
 }
