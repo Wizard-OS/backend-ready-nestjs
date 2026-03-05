@@ -1,5 +1,6 @@
 import {
   Column,
+  CreateDateColumn,
   Entity,
   JoinColumn,
   ManyToOne,
@@ -28,6 +29,15 @@ export class Payment {
   @Column()
   method: string;
 
+  @Column({ type: 'text', nullable: true })
+  reference: string | null;
+
+  @Column('uuid', { nullable: true })
+  receivedByMembershipId: string | null;
+
   @Column({ type: 'timestamp' })
   paidAt: Date;
+
+  @CreateDateColumn()
+  createdAt: Date;
 }
