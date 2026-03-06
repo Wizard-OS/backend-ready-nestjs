@@ -2,6 +2,16 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import {
+  AcceptLanguageResolver,
+  HeaderResolver,
+  I18nJsonLoader,
+  I18nModule,
+  QueryResolver,
+} from 'nestjs-i18n';
+import * as fs from 'fs';
+import * as path from 'path';
+
 import { AppService } from './app.service';
 import { AppController } from './app.controller';
 
@@ -26,6 +36,25 @@ import { ClinicMembershipsModule } from './clinic-memberships/clinic-memberships
 @Module({
   imports: [
     ConfigModule.forRoot(),
+    (() => {
+      const distI18nPath = path.join(__dirname, 'i18n');
+      const srcI18nPath = path.join(process.cwd(), 'src/i18n');
+      const i18nPath = fs.existsSync(distI18nPath) ? distI18nPath : srcI18nPath;
+
+      return I18nModule.forRoot({
+        fallbackLanguage: 'en',
+        loader: I18nJsonLoader,
+        loaderOptions: {
+          path: i18nPath,
+          watch: true,
+        },
+        resolvers: [
+          { use: QueryResolver, options: ['lang'] },
+          new HeaderResolver(['x-lang', 'x-custom-lang']),
+          AcceptLanguageResolver,
+        ],
+      });
+    })(),
     TypeOrmModule.forRoot({
       type: 'postgres',
       host: process.env.DB_HOST || '127.0.0.1',
