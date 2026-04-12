@@ -30,7 +30,9 @@ export class ClinicScopeGuard implements CanActivate {
     const clinicId = req.headers['x-clinic-id'];
 
     if (!clinicId || Array.isArray(clinicId) || !isUUID(clinicId)) {
-      throw new BadRequestException('x-clinic-id header with valid UUID is required');
+      throw new BadRequestException(
+        'x-clinic-id header with valid UUID is required',
+      );
     }
 
     const membership = await this.clinicMembershipRepository.findOne({

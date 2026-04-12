@@ -56,7 +56,10 @@ export class ClinicMembership {
   })
   isActive: boolean;
 
-  @OneToMany(() => Appointment, (appointment) => appointment.professionalMembership)
+  @OneToMany(
+    () => Appointment,
+    (appointment) => appointment.professionalMembership,
+  )
   appointments: Appointment[];
 
   @OneToMany(() => ClinicalNote, (note) => note.authorMembership)

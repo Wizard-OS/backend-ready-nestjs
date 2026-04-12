@@ -27,8 +27,14 @@ export class TreatmentSessionsService {
   ) {}
 
   async create(clinicId: string, dto: CreateTreatmentSessionDto) {
-    const treatment = await this.findTreatmentInClinic(dto.treatmentId, clinicId);
-    const record = await this.findClinicalRecordInClinic(dto.clinicalRecordId, clinicId);
+    const treatment = await this.findTreatmentInClinic(
+      dto.treatmentId,
+      clinicId,
+    );
+    const record = await this.findClinicalRecordInClinic(
+      dto.clinicalRecordId,
+      clinicId,
+    );
 
     if (treatment.patientId !== record.patientId) {
       throw new BadRequestException(
@@ -83,7 +89,10 @@ export class TreatmentSessionsService {
     const clinicalRecordId = dto.clinicalRecordId ?? session.clinicalRecordId;
 
     const treatment = await this.findTreatmentInClinic(treatmentId, clinicId);
-    const record = await this.findClinicalRecordInClinic(clinicalRecordId, clinicId);
+    const record = await this.findClinicalRecordInClinic(
+      clinicalRecordId,
+      clinicId,
+    );
 
     if (treatment.patientId !== record.patientId) {
       throw new BadRequestException(
@@ -122,7 +131,10 @@ export class TreatmentSessionsService {
     return treatment;
   }
 
-  private async findClinicalRecordInClinic(clinicalRecordId: string, clinicId: string) {
+  private async findClinicalRecordInClinic(
+    clinicalRecordId: string,
+    clinicId: string,
+  ) {
     const record = await this.clinicalRecordRepository
       .createQueryBuilder('record')
       .innerJoin('record.patient', 'patient')

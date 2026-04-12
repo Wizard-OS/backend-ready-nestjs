@@ -49,22 +49,22 @@ export class Appointment {
   @Column({ nullable: true })
   dentistId: string;
 
-  @ManyToOne(
-    () => ClinicMembership,
-    (membership) => membership.appointments,
-    {
-      onDelete: 'SET NULL',
-    },
-  )
+  @ManyToOne(() => ClinicMembership, (membership) => membership.appointments, {
+    onDelete: 'SET NULL',
+  })
   @JoinColumn({ name: 'professionalMembershipId' })
   professionalMembership: ClinicMembership;
 
   @Column('uuid', { nullable: true })
   professionalMembershipId: string | null;
 
-  @ManyToOne(() => AppointmentType, (appointmentType) => appointmentType.appointments, {
-    onDelete: 'SET NULL',
-  })
+  @ManyToOne(
+    () => AppointmentType,
+    (appointmentType) => appointmentType.appointments,
+    {
+      onDelete: 'SET NULL',
+    },
+  )
   @JoinColumn({ name: 'appointmentTypeId' })
   appointmentType: AppointmentType;
 

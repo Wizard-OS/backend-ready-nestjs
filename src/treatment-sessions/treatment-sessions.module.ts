@@ -10,7 +10,9 @@ import { TreatmentSessionsController } from './treatment-sessions.controller';
 @Module({
   controllers: [TreatmentSessionsController],
   providers: [TreatmentSessionsService],
-  imports: [TypeOrmModule.forFeature([TreatmentSession, Treatment, ClinicalRecord])],
+  imports: [
+    TypeOrmModule.forFeature([TreatmentSession, Treatment, ClinicalRecord]),
+  ],
   exports: [TypeOrmModule],
 })
 export class TreatmentSessionsModule {}

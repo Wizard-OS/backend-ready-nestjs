@@ -7,6 +7,13 @@ import {
   Patch,
   Post,
 } from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiParam,
+} from '@nestjs/swagger';
 
 import { Auth, GetUser } from '../auth/decorators';
 import { User } from '../auth/entities/user.entity';
@@ -14,27 +21,39 @@ import { PaymentMethodsService } from './payment-methods.service';
 import { CreatePaymentMethodDto } from './dto/create-payment-method.dto';
 import { UpdatePaymentMethodDto } from './dto/update-payment-method.dto';
 
+@ApiTags('Payment Methods')
+@ApiBearerAuth()
 @Controller('payment-methods')
 @Auth()
 export class PaymentMethodsController {
   constructor(private readonly paymentMethodsService: PaymentMethodsService) {}
 
   @Post()
+  @ApiOperation({ summary: 'Crear método de pago' })
+  @ApiResponse({ status: 201, description: 'Método de pago creado' })
   create(@GetUser() user: User, @Body() dto: CreatePaymentMethodDto) {
     return this.paymentMethodsService.create(user.id, dto);
   }
 
   @Get()
+  @ApiOperation({ summary: 'Listar métodos de pago del usuario' })
+  @ApiResponse({ status: 200, description: 'Lista de métodos de pago' })
   findAll(@GetUser() user: User) {
     return this.paymentMethodsService.findAll(user.id);
   }
 
   @Get(':id')
+  @ApiOperation({ summary: 'Obtener método de pago por ID' })
+  @ApiParam({ name: 'id', description: 'UUID del método de pago' })
+  @ApiResponse({ status: 200, description: 'Método de pago encontrado' })
   findOne(@GetUser() user: User, @Param('id') id: string) {
     return this.paymentMethodsService.findOne(user.id, id);
   }
 
   @Patch(':id')
+  @ApiOperation({ summary: 'Actualizar método de pago' })
+  @ApiParam({ name: 'id', description: 'UUID del método de pago' })
+  @ApiResponse({ status: 200, description: 'Método de pago actualizado' })
   update(
     @GetUser() user: User,
     @Param('id') id: string,
@@ -44,11 +63,20 @@ export class PaymentMethodsController {
   }
 
   @Delete(':id')
+  @ApiOperation({ summary: 'Eliminar método de pago' })
+  @ApiParam({ name: 'id', description: 'UUID del método de pago' })
+  @ApiResponse({ status: 200, description: 'Método de pago eliminado' })
   remove(@GetUser() user: User, @Param('id') id: string) {
     return this.paymentMethodsService.remove(user.id, id);
   }
 
   @Patch(':id/set-default')
+  @ApiOperation({ summary: 'Establecer método de pago como predeterminado' })
+  @ApiParam({ name: 'id', description: 'UUID del método de pago' })
+  @ApiResponse({
+    status: 200,
+    description: 'Método de pago establecido como predeterminado',
+  })
   setDefault(@GetUser() user: User, @Param('id') id: string) {
     return this.paymentMethodsService.setDefault(user.id, id);
   }

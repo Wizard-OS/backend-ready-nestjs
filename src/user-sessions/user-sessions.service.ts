@@ -29,7 +29,10 @@ export class UserSessionsService {
     });
   }
 
-  async revokeSession(userId: string, sessionId: string): Promise<{ message: string }> {
+  async revokeSession(
+    userId: string,
+    sessionId: string,
+  ): Promise<{ message: string }> {
     const session = await this.sessionRepository.findOne({
       where: { id: sessionId, userId },
     });
@@ -64,5 +67,3 @@ export class UserSessionsService {
     });
   }
 }
-
-

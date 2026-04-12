@@ -30,7 +30,9 @@ export class PaymentsService {
     const nextPaidAmount = paidAmount + Number(dto.amount);
 
     if (nextPaidAmount > Number(invoice.totalAmount)) {
-      throw new BadRequestException('Payment amount exceeds pending invoice balance');
+      throw new BadRequestException(
+        'Payment amount exceeds pending invoice balance',
+      );
     }
 
     const payment = this.paymentRepository.create(dto);
@@ -77,7 +79,9 @@ export class PaymentsService {
     const nextAmount = Number(dto.amount ?? payment.amount);
 
     if (paidWithoutCurrent + nextAmount > Number(invoice.totalAmount)) {
-      throw new BadRequestException('Payment amount exceeds pending invoice balance');
+      throw new BadRequestException(
+        'Payment amount exceeds pending invoice balance',
+      );
     }
 
     Object.assign(payment, dto);

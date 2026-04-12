@@ -79,7 +79,11 @@ export class PatientsService {
     return await this.findOne(clinicId, term);
   }
 
-  async update(clinicId: string, id: string, updatePatientDto: UpdatePatientDto) {
+  async update(
+    clinicId: string,
+    id: string,
+    updatePatientDto: UpdatePatientDto,
+  ) {
     const patient = await this.findOne(clinicId, id);
 
     if (updatePatientDto.clinicId && updatePatientDto.clinicId !== clinicId) {

@@ -91,9 +91,13 @@ export class AppointmentsService {
     const nextEnd = dto.endTime ?? appointment.endTime;
     this.validateTimeWindow(nextStart, nextEnd);
 
-    if (dto.patientId) await this.assertPatientInClinic(dto.patientId, clinicId);
+    if (dto.patientId)
+      await this.assertPatientInClinic(dto.patientId, clinicId);
     if (dto.professionalMembershipId !== undefined) {
-      await this.assertMembershipInClinic(dto.professionalMembershipId, clinicId);
+      await this.assertMembershipInClinic(
+        dto.professionalMembershipId,
+        clinicId,
+      );
     }
     if (dto.appointmentTypeId !== undefined) {
       await this.assertAppointmentTypeInClinic(dto.appointmentTypeId, clinicId);
@@ -103,7 +107,9 @@ export class AppointmentsService {
       clinicId,
       nextStart,
       nextEnd,
-      dto.professionalMembershipId ?? appointment.professionalMembershipId ?? undefined,
+      dto.professionalMembershipId ??
+        appointment.professionalMembershipId ??
+        undefined,
       dto.dentistId ?? appointment.dentistId,
       id,
     );
@@ -140,8 +146,13 @@ export class AppointmentsService {
     });
   }
 
-  async updateType(clinicId: string, id: string, dto: UpdateAppointmentTypeDto) {
-    if (!isUUID(id)) throw new BadRequestException('Invalid appointment type id');
+  async updateType(
+    clinicId: string,
+    id: string,
+    dto: UpdateAppointmentTypeDto,
+  ) {
+    if (!isUUID(id))
+      throw new BadRequestException('Invalid appointment type id');
 
     const appointmentType = await this.appointmentTypeRepository.findOne({
       where: { id, clinicId },
@@ -158,7 +169,8 @@ export class AppointmentsService {
   }
 
   async removeType(clinicId: string, id: string) {
-    if (!isUUID(id)) throw new BadRequestException('Invalid appointment type id');
+    if (!isUUID(id))
+      throw new BadRequestException('Invalid appointment type id');
 
     const appointmentType = await this.appointmentTypeRepository.findOne({
       where: { id, clinicId },
@@ -174,7 +186,9 @@ export class AppointmentsService {
 
   private ensureClinicScope(headerClinicId: string, bodyClinicId: string) {
     if (headerClinicId !== bodyClinicId) {
-      throw new BadRequestException('clinicId does not match x-clinic-id scope');
+      throw new BadRequestException(
+        'clinicId does not match x-clinic-id scope',
+      );
     }
   }
 
@@ -191,7 +205,9 @@ export class AppointmentsService {
     });
 
     if (!patient) {
-      throw new BadRequestException('Patient does not belong to the requested clinic');
+      throw new BadRequestException(
+        'Patient does not belong to the requested clinic',
+      );
     }
   }
 
@@ -277,7 +293,9 @@ export class AppointmentsService {
     const overlap = await overlapQuery.getOne();
 
     if (overlap) {
-      throw new BadRequestException('Appointment overlaps with an existing slot');
+      throw new BadRequestException(
+        'Appointment overlaps with an existing slot',
+      );
     }
   }
 

@@ -7,6 +7,14 @@ import {
   Patch,
   Post,
 } from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiSecurity,
+  ApiParam,
+} from '@nestjs/swagger';
 
 import { InvoicesService } from './invoices.service';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
@@ -14,12 +22,17 @@ import { UpdateInvoiceDto } from './dto/update-invoice.dto';
 import { CreateInvoiceItemDto } from './dto/create-invoice-item.dto';
 import { AuthClinic, GetClinicId } from '../auth/decorators';
 
+@ApiTags('Invoices')
+@ApiBearerAuth()
+@ApiSecurity('x-clinic-id')
 @Controller('invoices')
 @AuthClinic()
 export class InvoicesController {
   constructor(private readonly invoiceService: InvoicesService) {}
 
   @Post()
+  @ApiOperation({ summary: 'Crear factura' })
+  @ApiResponse({ status: 201, description: 'Factura creada' })
   create(
     @GetClinicId() clinicId: string,
     @Body() createInvoiceDto: CreateInvoiceDto,
@@ -28,16 +41,25 @@ export class InvoicesController {
   }
 
   @Get()
+  @ApiOperation({ summary: 'Listar facturas de la clínica' })
+  @ApiResponse({ status: 200, description: 'Lista de facturas' })
   findAll(@GetClinicId() clinicId: string) {
     return this.invoiceService.findAll(clinicId);
   }
 
   @Get(':id')
+  @ApiOperation({ summary: 'Obtener factura por ID' })
+  @ApiParam({ name: 'id', description: 'UUID de la factura' })
+  @ApiResponse({ status: 200, description: 'Factura encontrada' })
+  @ApiResponse({ status: 404, description: 'Factura no encontrada' })
   findOne(@GetClinicId() clinicId: string, @Param('id') id: string) {
     return this.invoiceService.findOne(clinicId, id);
   }
 
   @Patch(':id')
+  @ApiOperation({ summary: 'Actualizar factura' })
+  @ApiParam({ name: 'id', description: 'UUID de la factura' })
+  @ApiResponse({ status: 200, description: 'Factura actualizada' })
   update(
     @GetClinicId() clinicId: string,
     @Param('id') id: string,
@@ -47,11 +69,17 @@ export class InvoicesController {
   }
 
   @Delete(':id')
+  @ApiOperation({ summary: 'Eliminar factura' })
+  @ApiParam({ name: 'id', description: 'UUID de la factura' })
+  @ApiResponse({ status: 200, description: 'Factura eliminada' })
   remove(@GetClinicId() clinicId: string, @Param('id') id: string) {
     return this.invoiceService.remove(clinicId, id);
   }
 
   @Post(':id/items')
+  @ApiOperation({ summary: 'Agregar ítem a factura' })
+  @ApiParam({ name: 'id', description: 'UUID de la factura' })
+  @ApiResponse({ status: 201, description: 'Ítem agregado' })
   addItem(
     @GetClinicId() clinicId: string,
     @Param('id') id: string,
@@ -61,6 +89,10 @@ export class InvoicesController {
   }
 
   @Delete(':invoiceId/items/:itemId')
+  @ApiOperation({ summary: 'Eliminar ítem de factura' })
+  @ApiParam({ name: 'invoiceId', description: 'UUID de la factura' })
+  @ApiParam({ name: 'itemId', description: 'UUID del ítem' })
+  @ApiResponse({ status: 200, description: 'Ítem eliminado' })
   removeItem(
     @GetClinicId() clinicId: string,
     @Param('invoiceId') invoiceId: string,

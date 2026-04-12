@@ -97,7 +97,9 @@ export class TreatmentsService {
     });
 
     if (!patient) {
-      throw new BadRequestException('Patient does not belong to the requested clinic');
+      throw new BadRequestException(
+        'Patient does not belong to the requested clinic',
+      );
     }
   }
 
@@ -108,7 +110,9 @@ export class TreatmentsService {
     });
 
     if (!user) {
-      throw new BadRequestException(`Doctor/user with id ${doctorId} not found`);
+      throw new BadRequestException(
+        `Doctor/user with id ${doctorId} not found`,
+      );
     }
   }
 }

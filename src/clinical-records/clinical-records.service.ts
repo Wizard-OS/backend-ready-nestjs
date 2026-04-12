@@ -103,7 +103,9 @@ export class ClinicalRecordsService {
     });
 
     if (!patient) {
-      throw new BadRequestException('Patient does not belong to the requested clinic');
+      throw new BadRequestException(
+        'Patient does not belong to the requested clinic',
+      );
     }
   }
 }

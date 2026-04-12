@@ -74,7 +74,10 @@ export class ClinicalNotesService {
   async update(clinicId: string, id: string, dto: UpdateClinicalNoteDto) {
     const note = await this.findOne(clinicId, id);
 
-    if (dto.clinicalRecordId && dto.clinicalRecordId !== note.clinicalRecordId) {
+    if (
+      dto.clinicalRecordId &&
+      dto.clinicalRecordId !== note.clinicalRecordId
+    ) {
       await this.assertRecordInClinic(dto.clinicalRecordId, clinicId);
     }
 
@@ -88,7 +91,10 @@ export class ClinicalNotesService {
     return { message: `Clinical note ${id} removed` };
   }
 
-  private async assertRecordInClinic(clinicalRecordId: string, clinicId: string) {
+  private async assertRecordInClinic(
+    clinicalRecordId: string,
+    clinicId: string,
+  ) {
     const record = await this.clinicalRecordRepository
       .createQueryBuilder('record')
       .innerJoin('record.patient', 'patient')

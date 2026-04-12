@@ -7,18 +7,31 @@ import {
   Patch,
   Post,
 } from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiSecurity,
+  ApiParam,
+} from '@nestjs/swagger';
 
 import { RemindersService } from './reminders.service';
 import { CreateReminderDto } from './dto/create-reminder.dto';
 import { UpdateReminderDto } from './dto/update-reminder.dto';
 import { AuthClinic, GetClinicId } from '../auth/decorators';
 
+@ApiTags('Reminders')
+@ApiBearerAuth()
+@ApiSecurity('x-clinic-id')
 @Controller('reminders')
 @AuthClinic()
 export class RemindersController {
   constructor(private readonly remindersService: RemindersService) {}
 
   @Post()
+  @ApiOperation({ summary: 'Crear recordatorio' })
+  @ApiResponse({ status: 201, description: 'Recordatorio creado' })
   create(
     @GetClinicId() clinicId: string,
     @Body() createReminderDto: CreateReminderDto,
@@ -27,16 +40,24 @@ export class RemindersController {
   }
 
   @Get()
+  @ApiOperation({ summary: 'Listar recordatorios' })
+  @ApiResponse({ status: 200, description: 'Lista de recordatorios' })
   findAll(@GetClinicId() clinicId: string) {
     return this.remindersService.findAll(clinicId);
   }
 
   @Get(':id')
+  @ApiOperation({ summary: 'Obtener recordatorio por ID' })
+  @ApiParam({ name: 'id', description: 'UUID del recordatorio' })
+  @ApiResponse({ status: 200, description: 'Recordatorio encontrado' })
   findOne(@GetClinicId() clinicId: string, @Param('id') id: string) {
     return this.remindersService.findOne(clinicId, id);
   }
 
   @Patch(':id')
+  @ApiOperation({ summary: 'Actualizar recordatorio' })
+  @ApiParam({ name: 'id', description: 'UUID del recordatorio' })
+  @ApiResponse({ status: 200, description: 'Recordatorio actualizado' })
   update(
     @GetClinicId() clinicId: string,
     @Param('id') id: string,
@@ -46,6 +67,9 @@ export class RemindersController {
   }
 
   @Delete(':id')
+  @ApiOperation({ summary: 'Eliminar recordatorio' })
+  @ApiParam({ name: 'id', description: 'UUID del recordatorio' })
+  @ApiResponse({ status: 200, description: 'Recordatorio eliminado' })
   remove(@GetClinicId() clinicId: string, @Param('id') id: string) {
     return this.remindersService.remove(clinicId, id);
   }

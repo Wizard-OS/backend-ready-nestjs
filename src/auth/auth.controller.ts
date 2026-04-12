@@ -20,6 +20,14 @@ import { diskStorage } from 'multer';
 import { extname } from 'path';
 import * as fs from 'fs';
 import * as path from 'path';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiConsumes,
+  ApiBody,
+} from '@nestjs/swagger';
 
 import { AuthService } from './auth.service';
 import { RawHeaders, GetUser, Auth } from './decorators';
@@ -35,28 +43,65 @@ import { User } from './entities/user.entity';
 import { UserRoleGuard } from './guards/user-role.guard';
 import { ValidRoles } from './interfaces';
 
+@ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('register')
+  @ApiOperation({ summary: 'Registrar nuevo usuario' })
+  @ApiResponse({ status: 201, description: 'Usuario creado exitosamente' })
+  @ApiResponse({ status: 400, description: 'Datos inválidos' })
   createUser(@Body() createUserDto: CreateUserDto) {
     return this.authService.create(createUserDto);
   }
 
   @Post('login')
+  @ApiOperation({ summary: 'Iniciar sesión' })
+  @ApiResponse({
+    status: 201,
+    description: 'Login exitoso — retorna token JWT',
+  })
+  @ApiResponse({ status: 401, description: 'Credenciales inválidas' })
   loginUser(@Body() loginUserDto: LoginUserDto) {
     return this.authService.login(loginUserDto);
   }
 
   @Get('check-status')
   @Auth()
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Verificar estado de autenticación' })
+  @ApiResponse({
+    status: 200,
+    description: 'Token válido — retorna usuario y nuevo token',
+  })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
   checkAuthStatus(@GetUser() user: User) {
     return this.authService.checkAuthStatus(user);
   }
 
   @Post('profile-photo')
   @Auth()
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Subir foto de perfil' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+          description: 'Archivo de imagen (max 5 MB)',
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 201, description: 'Foto subida exitosamente' })
+  @ApiResponse({
+    status: 400,
+    description: 'Solo se permiten archivos de imagen',
+  })
   @UseInterceptors(
     FileInterceptor('file', {
       storage: diskStorage({
@@ -95,12 +140,18 @@ export class AuthController {
 
   @Get('profile')
   @Auth()
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Obtener perfil del usuario autenticado' })
+  @ApiResponse({ status: 200, description: 'Perfil del usuario' })
   getProfile(@GetUser() user: User) {
     return this.authService.getProfile(user);
   }
 
   @Patch('profile')
   @Auth()
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Actualizar perfil del usuario autenticado' })
+  @ApiResponse({ status: 200, description: 'Perfil actualizado' })
   updateProfile(
     @GetUser() user: User,
     @Body() updateProfileDto: UpdateProfileDto,
@@ -110,6 +161,10 @@ export class AuthController {
 
   @Post('change-password')
   @Auth()
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Cambiar contraseña' })
+  @ApiResponse({ status: 201, description: 'Contraseña cambiada' })
+  @ApiResponse({ status: 400, description: 'Contraseña actual incorrecta' })
   changePassword(
     @GetUser() user: User,
     @Body() changePasswordDto: ChangePasswordDto,
@@ -119,17 +174,21 @@ export class AuthController {
 
   @Post('logout')
   @Auth()
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Cerrar sesión' })
+  @ApiResponse({ status: 201, description: 'Sesión cerrada' })
   logout() {
     return this.authService.logout();
   }
 
   @Get('private')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '[Test] Ruta privada de prueba' })
   @UseGuards(AuthGuard())
   testingPrivateRoute(
     @Req() request: Request,
     @GetUser() user: User,
     @GetUser('email') userEmail: string,
-
     @RawHeaders() rawHeaders: string[],
     @Headers() headers: IncomingHttpHeaders,
   ) {
@@ -144,6 +203,8 @@ export class AuthController {
   }
 
   @Get('private2')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '[Test] Ruta protegida por rol (superUser/admin)' })
   @RoleProtected(ValidRoles.superUser, ValidRoles.admin)
   @UseGuards(AuthGuard(), UserRoleGuard)
   privateRoute2(@GetUser() user: User) {
@@ -154,6 +215,8 @@ export class AuthController {
   }
 
   @Get('private3')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '[Test] Ruta protegida por @Auth(admin)' })
   @Auth(ValidRoles.admin)
   privateRoute3(@GetUser() user: User) {
     return {

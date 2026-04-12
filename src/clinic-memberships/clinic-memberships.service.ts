@@ -57,7 +57,10 @@ export class ClinicMembershipsService {
     return membership;
   }
 
-  async update(id: string, updateClinicMembershipDto: UpdateClinicMembershipDto) {
+  async update(
+    id: string,
+    updateClinicMembershipDto: UpdateClinicMembershipDto,
+  ) {
     const membership = await this.findOne(id);
     Object.assign(membership, updateClinicMembershipDto);
 

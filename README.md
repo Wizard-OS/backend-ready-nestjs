@@ -25,6 +25,42 @@ pnpm db:up
 pnpm start:dev
 ```
 
+## Documentación API (Swagger / OpenAPI)
+
+La API cuenta con documentación interactiva generada con **Swagger (OpenAPI 3.0)**.
+
+### Acceso
+| Recurso | URL |
+|---|---|
+| Swagger UI | `http://localhost:3000/api/docs` |
+| JSON spec | `http://localhost:3000/api/docs-json` |
+
+### Autenticación en Swagger UI
+1. **Bearer Token (JWT)**: Haz click en el botón **Authorize** 🔓 en la parte superior de Swagger UI e ingresa tu token JWT (obtenido de `POST /api/auth/login`) en el campo `bearer`.
+2. **x-clinic-id**: Para los endpoints que requieren scope de clínica (marcados con el candado `x-clinic-id`), ingresa el UUID de la clínica activa en el campo correspondiente del diálogo Authorize.
+
+### Módulos documentados
+- **Auth** — registro, login, perfil, cambio de contraseña, foto de perfil
+- **Clinics** — CRUD de clínicas (admin)
+- **Clinic Memberships** — membresías de usuarios en clínicas (admin)
+- **Patients** — CRUD de pacientes (scope clínica)
+- **Appointments** — citas y tipos de cita (scope clínica)
+- **Invoices** — facturación e ítems (scope clínica)
+- **Payments** — pagos parciales/totales (scope clínica)
+- **Expenses** — gastos y totales (scope clínica)
+- **Clinical Records** — registros clínicos (scope clínica)
+- **Clinical Notes** — notas clínicas (scope clínica)
+- **Treatments** — tratamientos (scope clínica)
+- **Treatment Sessions** — sesiones de tratamiento (scope clínica)
+- **Message Templates** — plantillas de mensaje (scope clínica)
+- **Outbound Messages** — mensajería saliente (scope clínica)
+- **Reminders** — recordatorios (scope clínica)
+- **Payment Methods** — métodos de pago del usuario
+- **User Sessions** — sesiones activas del usuario
+- **Notification Preferences** — preferencias de notificación
+- **Help Center** — FAQs, contacto y solicitudes de soporte
+- **Common** — dashboard operativo/financiero
+
 ## Configuración de Entorno
 Variables clave:
 - `PORT`: puerto HTTP de la API (default `3000`)

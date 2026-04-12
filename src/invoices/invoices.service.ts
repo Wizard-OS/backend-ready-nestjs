@@ -92,7 +92,8 @@ export class InvoicesService {
     const invoice = await this.findOne(clinicId, id);
 
     if (dto.clinicId) this.ensureClinicScope(clinicId, dto.clinicId);
-    if (dto.patientId) await this.assertPatientInClinic(dto.patientId, clinicId);
+    if (dto.patientId)
+      await this.assertPatientInClinic(dto.patientId, clinicId);
 
     const merged = {
       subtotal: dto.subtotal ?? invoice.subtotal,
@@ -116,7 +117,11 @@ export class InvoicesService {
     return { message: `Invoice ${id} cancelled` };
   }
 
-  async addItem(clinicId: string, invoiceId: string, dto: CreateInvoiceItemDto) {
+  async addItem(
+    clinicId: string,
+    invoiceId: string,
+    dto: CreateInvoiceItemDto,
+  ) {
     const invoice = await this.findOne(clinicId, invoiceId);
 
     const item = this.invoiceItemRepository.create({
@@ -168,7 +173,8 @@ export class InvoicesService {
 
     invoice.subtotal = subtotalRaw.toFixed(2);
 
-    const totalRaw = subtotalRaw - Number(invoice.discount) + Number(invoice.tax);
+    const totalRaw =
+      subtotalRaw - Number(invoice.discount) + Number(invoice.tax);
     invoice.totalAmount = totalRaw.toFixed(2);
 
     await this.invoiceRepository.save(invoice);
@@ -194,7 +200,8 @@ export class InvoicesService {
       ) ?? Number(input.subtotal);
 
     const subtotal = subtotalFromItems.toFixed(2);
-    const totalRaw = subtotalFromItems - Number(input.discount) + Number(input.tax);
+    const totalRaw =
+      subtotalFromItems - Number(input.discount) + Number(input.tax);
     const totalAmount = totalRaw.toFixed(2);
 
     return {
@@ -236,7 +243,9 @@ export class InvoicesService {
 
   private ensureClinicScope(headerClinicId: string, bodyClinicId: string) {
     if (headerClinicId !== bodyClinicId) {
-      throw new BadRequestException('clinicId does not match x-clinic-id scope');
+      throw new BadRequestException(
+        'clinicId does not match x-clinic-id scope',
+      );
     }
   }
 
@@ -247,7 +256,9 @@ export class InvoicesService {
     });
 
     if (!patient) {
-      throw new BadRequestException('Patient does not belong to the requested clinic');
+      throw new BadRequestException(
+        'Patient does not belong to the requested clinic',
+      );
     }
   }
 
