@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
   Body,
   Req,
   UseGuards,
@@ -24,7 +25,12 @@ import { AuthService } from './auth.service';
 import { RawHeaders, GetUser, Auth } from './decorators';
 import { RoleProtected } from './decorators';
 
-import { CreateUserDto, LoginUserDto } from './dto';
+import {
+  CreateUserDto,
+  LoginUserDto,
+  UpdateProfileDto,
+  ChangePasswordDto,
+} from './dto';
 import { User } from './entities/user.entity';
 import { UserRoleGuard } from './guards/user-role.guard';
 import { ValidRoles } from './interfaces';
@@ -85,6 +91,36 @@ export class AuthController {
   ) {
     const baseUrl = `${request.protocol}://${request.get('host')}`;
     return this.authService.updateProfilePhoto(user, file, baseUrl);
+  }
+
+  @Get('profile')
+  @Auth()
+  getProfile(@GetUser() user: User) {
+    return this.authService.getProfile(user);
+  }
+
+  @Patch('profile')
+  @Auth()
+  updateProfile(
+    @GetUser() user: User,
+    @Body() updateProfileDto: UpdateProfileDto,
+  ) {
+    return this.authService.updateProfile(user, updateProfileDto);
+  }
+
+  @Post('change-password')
+  @Auth()
+  changePassword(
+    @GetUser() user: User,
+    @Body() changePasswordDto: ChangePasswordDto,
+  ) {
+    return this.authService.changePassword(user, changePasswordDto);
+  }
+
+  @Post('logout')
+  @Auth()
+  logout() {
+    return this.authService.logout();
   }
 
   @Get('private')

@@ -12,7 +12,12 @@ import { Repository } from 'typeorm';
 
 import { JwtPayload } from './interfaces';
 import { User } from './entities/user.entity';
-import { CreateUserDto, LoginUserDto } from './dto';
+import {
+  CreateUserDto,
+  LoginUserDto,
+  UpdateProfileDto,
+  ChangePasswordDto,
+} from './dto';
 
 @Injectable()
 export class AuthService {
@@ -96,6 +101,81 @@ export class AuthService {
     return {
       ...updatedUser,
       token: this.getJwtToken({ id: updatedUser.id }),
+    };
+  }
+
+  async updateProfile(user: User, updateProfileDto: UpdateProfileDto) {
+    const { email, ...rest } = updateProfileDto;
+
+    if (email && email !== user.email) {
+      const existing = await this.userRepository.findOne({
+        where: { email: email.toLowerCase().trim() },
+      });
+      if (existing && existing.id !== user.id) {
+        throw new BadRequestException('Email already in use');
+      }
+    }
+
+    await this.userRepository.update(user.id, {
+      ...rest,
+      ...(email ? { email: email.toLowerCase().trim() } : {}),
+    });
+
+    const updatedUser = await this.userRepository.findOne({
+      where: { id: user.id },
+    });
+
+    if (!updatedUser) {
+      throw new InternalServerErrorException('User not found after update');
+    }
+
+    return {
+      ...updatedUser,
+      token: this.getJwtToken({ id: updatedUser.id }),
+    };
+  }
+
+  async changePassword(user: User, changePasswordDto: ChangePasswordDto) {
+    const { currentPassword, newPassword } = changePasswordDto;
+
+    const userWithPassword = await this.userRepository.findOne({
+      where: { id: user.id },
+      select: { id: true, password: true },
+    });
+
+    if (!userWithPassword) {
+      throw new InternalServerErrorException('User not found');
+    }
+
+    if (!bcrypt.compareSync(currentPassword, userWithPassword.password)) {
+      throw new UnauthorizedException('Current password is incorrect');
+    }
+
+    await this.userRepository.update(user.id, {
+      password: bcrypt.hashSync(newPassword, 10),
+    });
+
+    return {
+      message: 'Password changed successfully',
+      token: this.getJwtToken({ id: user.id }),
+    };
+  }
+
+  async getProfile(user: User) {
+    const fullUser = await this.userRepository.findOne({
+      where: { id: user.id },
+    });
+
+    if (!fullUser) {
+      throw new InternalServerErrorException('User not found');
+    }
+
+    return fullUser;
+  }
+
+  logout() {
+    return {
+      message: 'Logged out successfully',
     };
   }
 

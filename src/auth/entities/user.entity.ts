@@ -52,6 +52,11 @@ export class User {
   @Column('text', {
     nullable: true,
   })
+  phone?: string;
+
+  @Column('text', {
+    nullable: true,
+  })
   profilePhotoUrl?: string;
 
   @OneToMany(() => Appointment, (appointment) => appointment.dentist)
