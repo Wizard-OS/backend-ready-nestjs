@@ -26,13 +26,17 @@ import { InvoicesModule } from './invoices/invoices.module';
 import { PaymentsModule } from './payments/payments.module';
 import { RemindersModule } from './reminders/reminders.module';
 import { TreatmentsModule } from './treatments/treatments.module';
+import { HelpCenterModule } from './help-center/help-center.module';
 import { AppointmentsModule } from './appointments/appointments.module';
+import { UserSessionsModule } from './user-sessions/user-sessions.module';
 import { ClinicalNotesModule } from './clinical-notes/clinical-notes.module';
+import { PaymentMethodsModule } from './payment-methods/payment-methods.module';
 import { ClinicalRecordsModule } from './clinical-records/clinical-records.module';
 import { MessageTemplatesModule } from './message-templates/message-templates.module';
 import { OutboundMessagesModule } from './outbound-messages/outbound-messages.module';
 import { TreatmentSessionsModule } from './treatment-sessions/treatment-sessions.module';
 import { ClinicMembershipsModule } from './clinic-memberships/clinic-memberships.module';
+import { NotificationPreferencesModule } from './notification-preferences/notification-preferences.module';
 
 @Module({
   imports: [
@@ -94,6 +98,10 @@ import { ClinicMembershipsModule } from './clinic-memberships/clinic-memberships
     ClinicalNotesModule,
     TreatmentSessionsModule,
     RemindersModule,
+    NotificationPreferencesModule,
+    UserSessionsModule,
+    PaymentMethodsModule,
+    HelpCenterModule,
   ],
   controllers: [AppController],
   providers: [AppService],
