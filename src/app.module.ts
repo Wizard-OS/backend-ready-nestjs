@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ServeStaticModule } from '@nestjs/serve-static';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import {
@@ -36,6 +37,14 @@ import { ClinicMembershipsModule } from './clinic-memberships/clinic-memberships
 @Module({
   imports: [
     ConfigModule.forRoot(),
+    ServeStaticModule.forRoot({
+      rootPath: path.join(process.cwd(), 'uploads'),
+      serveRoot: '/uploads',
+      serveStaticOptions: {
+        index: false,
+      },
+      renderPath: '/_index',
+    }),
     (() => {
       const distI18nPath = path.join(__dirname, 'i18n');
       const srcI18nPath = path.join(process.cwd(), 'src/i18n');

@@ -118,6 +118,7 @@ export class SeedService {
           lastName: user.lastName,
           password: bcrypt.hashSync(user.passwordPlain, 10),
           roles: user.roles,
+          profilePhotoUrl: user.profilePhotoUrl,
         }),
       ),
     );

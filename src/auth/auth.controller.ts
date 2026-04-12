@@ -1,14 +1,24 @@
 import {
+  BadRequestException,
   Controller,
   Get,
   Post,
   Body,
-  UseGuards,
   Req,
+  UseGuards,
+  UploadedFile,
+  UseInterceptors,
   Headers,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { type IncomingHttpHeaders } from 'http';
+import type { Request } from 'express';
+import type { Express } from 'express';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { extname } from 'path';
+import * as fs from 'fs';
+import * as path from 'path';
 
 import { AuthService } from './auth.service';
 import { RawHeaders, GetUser, Auth } from './decorators';
@@ -39,10 +49,48 @@ export class AuthController {
     return this.authService.checkAuthStatus(user);
   }
 
+  @Post('profile-photo')
+  @Auth()
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: (req, file, cb) => {
+          fs.mkdirSync(path.join(process.cwd(), 'uploads', 'profile-photos'), {
+            recursive: true,
+          });
+          cb(null, path.join(process.cwd(), 'uploads', 'profile-photos'));
+        },
+        filename: (req, file, cb) => {
+          const ext = extname(file.originalname) || '.jpg';
+          const userId = (req as Request & { user?: User }).user?.id ?? 'user';
+          cb(null, `${userId}-${Date.now()}${ext}`);
+        },
+      }),
+      fileFilter: (req, file, cb) => {
+        if (!file.mimetype.startsWith('image/')) {
+          return cb(
+            new BadRequestException('Only image files are allowed'),
+            false,
+          );
+        }
+        cb(null, true);
+      },
+      limits: { fileSize: 5 * 1024 * 1024 },
+    }),
+  )
+  uploadProfilePhoto(
+    @GetUser() user: User,
+    @UploadedFile() file: Express.Multer.File,
+    @Req() request: Request,
+  ) {
+    const baseUrl = `${request.protocol}://${request.get('host')}`;
+    return this.authService.updateProfilePhoto(user, file, baseUrl);
+  }
+
   @Get('private')
   @UseGuards(AuthGuard())
   testingPrivateRoute(
-    @Req() request: Express.Request,
+    @Req() request: Request,
     @GetUser() user: User,
     @GetUser('email') userEmail: string,
 

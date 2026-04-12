@@ -49,6 +49,11 @@ export class User {
   })
   roles: ValidRoles[];
 
+  @Column('text', {
+    nullable: true,
+  })
+  profilePhotoUrl?: string;
+
   @OneToMany(() => Appointment, (appointment) => appointment.dentist)
   appointments: Appointment[];
 

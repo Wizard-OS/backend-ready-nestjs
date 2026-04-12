@@ -1,5 +1,6 @@
 import {
   IsEmail,
+  IsOptional,
   IsString,
   Matches,
   MaxLength,
@@ -27,4 +28,9 @@ export class CreateUserDto {
   @IsString()
   @MinLength(1)
   lastName: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2048)
+  profilePhotoUrl?: string;
 }

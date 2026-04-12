@@ -12,6 +12,7 @@ export interface SeedUser {
   lastName: string;
   passwordPlain: string;
   roles: ValidRoles[];
+  profilePhotoUrl?: string;
 }
 
 export interface SeedClinic {

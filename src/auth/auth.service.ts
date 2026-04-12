@@ -73,6 +73,32 @@ export class AuthService {
     };
   }
 
+  async updateProfilePhoto(
+    user: User,
+    file: Express.Multer.File,
+    baseUrl: string,
+  ) {
+    if (!file) {
+      throw new BadRequestException('No file uploaded');
+    }
+
+    const profilePhotoUrl = `${baseUrl}/uploads/profile-photos/${file.filename}`;
+    await this.userRepository.update(user.id, { profilePhotoUrl });
+
+    const updatedUser = await this.userRepository.findOne({
+      where: { id: user.id },
+    });
+
+    if (!updatedUser) {
+      throw new InternalServerErrorException('User not found');
+    }
+
+    return {
+      ...updatedUser,
+      token: this.getJwtToken({ id: updatedUser.id }),
+    };
+  }
+
   private getJwtToken(payload: JwtPayload) {
     return this.jwtService.sign(payload);
   }
