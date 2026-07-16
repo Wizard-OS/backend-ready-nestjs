@@ -27,17 +27,25 @@ export class CreateInvoiceDto {
   @IsUUID()
   patientId: string;
 
+  @ApiPropertyOptional({
+    description: 'UUID del tratamiento relacionado al presupuesto',
+  })
+  @IsUUID()
+  @IsOptional()
+  treatmentId?: string;
+
   @ApiProperty({ example: 'INV-001', description: 'Número de factura' })
   @IsString()
   number: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     enum: InvoiceStatus,
     example: InvoiceStatus.PENDING,
-    description: 'Estado de la factura',
+    description: 'Estado del documento comercial',
   })
   @IsEnum(InvoiceStatus)
-  status: InvoiceStatus;
+  @IsOptional()
+  status?: InvoiceStatus;
 
   @ApiProperty({
     example: '1000.00',
@@ -74,6 +82,14 @@ export class CreateInvoiceDto {
   @IsDateString()
   @IsOptional()
   dueAt?: Date;
+
+  @ApiPropertyOptional({
+    example: 'Presupuesto válido por 15 días',
+    description: 'Observaciones del presupuesto/factura',
+  })
+  @IsString()
+  @IsOptional()
+  observations?: string;
 
   @ApiPropertyOptional({
     type: [CreateInvoiceItemDto],

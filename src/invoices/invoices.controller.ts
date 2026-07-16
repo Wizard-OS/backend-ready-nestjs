@@ -20,13 +20,19 @@ import { InvoicesService } from './invoices.service';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { UpdateInvoiceDto } from './dto/update-invoice.dto';
 import { CreateInvoiceItemDto } from './dto/create-invoice-item.dto';
-import { AuthClinic, GetClinicId } from '../auth/decorators';
+import { AuthClinic, ClinicRoles, GetClinicId } from '../auth/decorators';
+import { ClinicMembershipRole } from '../clinic-memberships/interfaces/clinic-membership-role.enum';
 
 @ApiTags('Invoices')
 @ApiBearerAuth()
 @ApiSecurity('x-clinic-id')
 @Controller('invoices')
 @AuthClinic()
+@ClinicRoles(
+  ClinicMembershipRole.owner,
+  ClinicMembershipRole.admin,
+  ClinicMembershipRole.receptionist,
+)
 export class InvoicesController {
   constructor(private readonly invoiceService: InvoicesService) {}
 

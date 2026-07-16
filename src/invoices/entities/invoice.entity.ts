@@ -38,6 +38,9 @@ export class Invoice {
   @Column()
   patientId: string;
 
+  @Column('uuid', { nullable: true })
+  treatmentId: string | null;
+
   @Column('text')
   number: string;
 
@@ -56,8 +59,12 @@ export class Invoice {
   @Column({
     type: 'enum',
     enum: InvoiceStatus,
+    default: InvoiceStatus.PENDING,
   })
   status: InvoiceStatus;
+
+  @Column({ type: 'text', nullable: true })
+  observations: string | null;
 
   @OneToMany(() => Payment, (payment) => payment.invoice)
   payments: Payment[];

@@ -42,6 +42,7 @@ export class InvoicesService {
         clinicId,
         subtotal,
         totalAmount,
+        status: dto.status ?? InvoiceStatus.PENDING,
       });
 
       const savedInvoice = await this.invoiceRepository.save(invoice);
@@ -212,12 +213,20 @@ export class InvoicesService {
   }
 
   private resolveInvoiceStatus(invoice: Invoice) {
-    if (invoice.status === InvoiceStatus.CANCELLED) {
+    if (
+      [
+        InvoiceStatus.CANCELLED,
+        InvoiceStatus.DRAFT,
+        InvoiceStatus.SENT,
+        InvoiceStatus.REJECTED,
+        InvoiceStatus.EXPIRED,
+      ].includes(invoice.status)
+    ) {
       return invoice;
     }
 
     const paidAmount = invoice.payments?.reduce(
-      (acc, payment) => acc + Number(payment.amount),
+      (acc, payment) => acc + (payment.voidedAt ? 0 : Number(payment.amount)),
       0,
     );
 
@@ -230,6 +239,10 @@ export class InvoicesService {
 
     if (paidAmount > 0 && paidAmount < total) {
       invoice.status = InvoiceStatus.PARTIALLY_PAID;
+      return invoice;
+    }
+
+    if (invoice.status === InvoiceStatus.ACCEPTED) {
       return invoice;
     }
 
