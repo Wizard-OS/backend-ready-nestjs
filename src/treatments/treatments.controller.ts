@@ -19,13 +19,19 @@ import {
 import { TreatmentsService } from './treatments.service';
 import { CreateTreatmentDto } from './dto/create-treatment.dto';
 import { UpdateTreatmentDto } from './dto/update-treatment.dto';
-import { AuthClinic, GetClinicId } from '../auth/decorators';
+import { AuthClinic, ClinicRoles, GetClinicId } from '../auth/decorators';
+import { ClinicMembershipRole } from '../clinic-memberships/interfaces/clinic-membership-role.enum';
 
 @ApiTags('Treatments')
 @ApiBearerAuth()
 @ApiSecurity('x-clinic-id')
 @Controller('treatments')
 @AuthClinic()
+@ClinicRoles(
+  ClinicMembershipRole.owner,
+  ClinicMembershipRole.admin,
+  ClinicMembershipRole.odontologist,
+)
 export class TreatmentsController {
   constructor(private readonly treatmentsService: TreatmentsService) {}
 

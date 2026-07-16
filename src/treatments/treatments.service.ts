@@ -29,6 +29,12 @@ export class TreatmentsService {
   async create(clinicId: string, dto: CreateTreatmentDto) {
     await this.assertPatientInClinic(dto.patientId, clinicId);
     await this.assertDoctorInClinic(dto.doctorId, clinicId);
+    if (dto.professionalMembershipId) {
+      await this.assertMembershipInClinic(
+        dto.professionalMembershipId,
+        clinicId,
+      );
+    }
 
     const treatment = this.treatmentRepository.create({
       ...dto,
@@ -79,6 +85,16 @@ export class TreatmentsService {
       await this.assertDoctorInClinic(dto.doctorId, clinicId);
     }
 
+    if (
+      dto.professionalMembershipId &&
+      dto.professionalMembershipId !== treatment.professionalMembershipId
+    ) {
+      await this.assertMembershipInClinic(
+        dto.professionalMembershipId,
+        clinicId,
+      );
+    }
+
     Object.assign(treatment, dto);
     return await this.treatmentRepository.save(treatment);
   }
@@ -116,6 +132,22 @@ export class TreatmentsService {
     if (!membership) {
       throw new BadRequestException(
         `Doctor/user with id ${doctorId} does not belong to the requested clinic`,
+      );
+    }
+  }
+
+  private async assertMembershipInClinic(
+    membershipId: string,
+    clinicId: string,
+  ) {
+    const membership = await this.clinicMembershipRepository.findOne({
+      where: { id: membershipId, clinicId, isActive: true },
+      select: { id: true },
+    });
+
+    if (!membership) {
+      throw new BadRequestException(
+        `Membership ${membershipId} does not belong to the requested clinic`,
       );
     }
   }
