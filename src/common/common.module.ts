@@ -12,6 +12,7 @@ import { Payment } from '../payments/entities/payment.entity';
 import { Expense } from '../expenses/entities/expense.entity';
 import { Reminder } from '../reminders/entities/reminder.entity';
 import { Appointment } from '../appointments/entities/appointment.entity';
+import { Treatment } from '../treatments/entities/treatment.entity';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { Appointment } from '../appointments/entities/appointment.entity';
       Appointment,
       Expense,
       Reminder,
+      Treatment,
     ]),
   ],
   controllers: [CommonController],
