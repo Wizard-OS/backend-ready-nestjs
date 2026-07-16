@@ -5,6 +5,7 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  MaxLength,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -35,6 +36,15 @@ export class CreatePatientDto {
   @ApiProperty({ example: 'López', description: 'Apellido del paciente' })
   @IsString()
   lastName: string;
+
+  @ApiPropertyOptional({
+    example: 'UY-12345678',
+    description: 'Documento o identificación del paciente',
+  })
+  @IsString()
+  @MaxLength(80)
+  @IsOptional()
+  documentId?: string;
 
   @ApiProperty({
     example: '1990-05-15',
@@ -68,4 +78,36 @@ export class CreatePatientDto {
   @IsString()
   @IsOptional()
   phone: string;
+
+  @ApiPropertyOptional({
+    example: 'Laura López +59891111111',
+    description: 'Contacto de emergencia',
+  })
+  @IsString()
+  @IsOptional()
+  emergencyContact?: string;
+
+  @ApiPropertyOptional({
+    example: 'Prefiere turnos por la mañana',
+    description: 'Observaciones generales',
+  })
+  @IsString()
+  @IsOptional()
+  observations?: string;
+
+  @ApiPropertyOptional({
+    example: 'Hipertensión controlada',
+    description: 'Antecedentes médicos básicos',
+  })
+  @IsString()
+  @IsOptional()
+  medicalHistory?: string;
+
+  @ApiPropertyOptional({
+    example: 'Bruxismo nocturno',
+    description: 'Antecedentes odontológicos básicos',
+  })
+  @IsString()
+  @IsOptional()
+  dentalHistory?: string;
 }

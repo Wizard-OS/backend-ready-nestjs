@@ -63,9 +63,15 @@ export class PatientsService {
         .where('patient.clinicId = :clinicId', { clinicId })
         .andWhere(
           new Brackets((qb) => {
-            qb.where('patient.email = :email', { email: term })
-              .orWhere('patient.firstName = :firstName', { firstName: term })
-              .orWhere('patient.lastName = :lastName', { lastName: term });
+            qb.where('patient.email = :exactTerm', { exactTerm: term })
+              .orWhere('patient.documentId = :exactTerm', { exactTerm: term })
+              .orWhere('patient.phone = :exactTerm', { exactTerm: term })
+              .orWhere('patient.firstName ILIKE :searchTerm', {
+                searchTerm: `%${term}%`,
+              })
+              .orWhere('patient.lastName ILIKE :searchTerm', {
+                searchTerm: `%${term}%`,
+              });
           }),
         )
         .getOne();
@@ -73,7 +79,7 @@ export class PatientsService {
 
     if (!patient)
       throw new NotFoundException(
-        `Patient with id, email, firstName or lastName "${term}" not found`,
+        `Patient with id, email, document, phone, firstName or lastName "${term}" not found`,
       );
 
     return patient;

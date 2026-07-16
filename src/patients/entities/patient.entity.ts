@@ -25,6 +25,7 @@ import { Clinic } from '../../clinics/entities/clinic.entity';
 @Index(['clinicId'])
 @Unique(['clinicId', 'email'])
 @Unique(['clinicId', 'phone'])
+@Unique(['clinicId', 'documentId'])
 export class Patient {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -49,6 +50,11 @@ export class Patient {
   @Column('text')
   lastName: string;
 
+  @Column('text', {
+    nullable: true,
+  })
+  documentId: string | null;
+
   @Column('date')
   birthDate: Date;
 
@@ -66,6 +72,26 @@ export class Patient {
     nullable: true,
   })
   phone: string | null;
+
+  @Column('text', {
+    nullable: true,
+  })
+  emergencyContact: string | null;
+
+  @Column('text', {
+    nullable: true,
+  })
+  observations: string | null;
+
+  @Column('text', {
+    nullable: true,
+  })
+  medicalHistory: string | null;
+
+  @Column('text', {
+    nullable: true,
+  })
+  dentalHistory: string | null;
 
   @OneToMany(() => Appointment, (appointment) => appointment.patient)
   appointments: Appointment[];
@@ -91,6 +117,14 @@ export class Patient {
   checkFieldsBeforeInsert() {
     if (this.email) {
       this.email = this.email.toLowerCase().trim();
+    }
+
+    if (this.documentId) {
+      this.documentId = this.documentId.trim();
+    }
+
+    if (this.phone) {
+      this.phone = this.phone.trim();
     }
   }
 
