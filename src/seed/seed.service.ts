@@ -13,6 +13,8 @@ import { Payment } from '../payments/entities/payment.entity';
 import { InvoiceItem } from '../invoices/entities/invoice-item.entity';
 import { Appointment } from '../appointments/entities/appointment.entity';
 import { AppointmentType } from '../appointments/entities/appointment-type.entity';
+import { PatientFile } from '../patient-files/entities/patient-file.entity';
+import { OdontogramEntry } from '../odontogram/entities/odontogram-entry.entity';
 import { ClinicMembership } from '../clinic-memberships/entities/clinic-membership.entity';
 
 @Injectable()
@@ -46,6 +48,12 @@ export class SeedService {
 
     @InjectRepository(Payment)
     private readonly paymentRepository: Repository<Payment>,
+
+    @InjectRepository(OdontogramEntry)
+    private readonly odontogramRepository: Repository<OdontogramEntry>,
+
+    @InjectRepository(PatientFile)
+    private readonly patientFileRepository: Repository<PatientFile>,
   ) {}
 
   async runSeed() {
@@ -64,6 +72,8 @@ export class SeedService {
     const invoices = await this.insertInvoices(patients, clinics);
     await this.insertInvoiceItems(invoices);
     await this.insertPayments(invoices, memberships);
+    await this.insertOdontogramEntries(patients, memberships);
+    await this.insertPatientFiles(patients, memberships);
 
     return {
       message: 'SEED EXECUTED',
@@ -77,6 +87,8 @@ export class SeedService {
         invoices: invoices.size,
         invoiceItems: initialData.invoiceItems.length,
         payments: initialData.payments.length,
+        odontogramEntries: initialData.odontogramEntries.length,
+        patientFiles: initialData.patientFiles.length,
       },
       clinicIds: Object.fromEntries(
         [...clinics.entries()].map(([code, clinic]) => [code, clinic.id]),
@@ -87,6 +99,8 @@ export class SeedService {
   private async deleteTables() {
     const tables = [
       'payments',
+      'patient_files',
+      'odontogram_entries',
       'invoice_items',
       'invoices',
       'appointments',
@@ -130,7 +144,18 @@ export class SeedService {
 
   private async insertClinics() {
     const dbClinics = await this.clinicRepository.save(
-      initialData.clinics.map((clinic) => this.clinicRepository.create(clinic)),
+      initialData.clinics.map((clinic) =>
+        this.clinicRepository.create({
+          name: clinic.name,
+          timezone: clinic.timezone,
+          currency: clinic.currency,
+          phone: clinic.phone ?? null,
+          email: clinic.email ?? null,
+          address: clinic.address ?? null,
+          logoUrl: clinic.logoUrl ?? null,
+          workingHoursJson: clinic.workingHoursJson ?? {},
+        }),
+      ),
     );
 
     return new Map(
@@ -169,10 +194,15 @@ export class SeedService {
           email: patient.email,
           firstName: patient.firstName,
           lastName: patient.lastName,
+          documentId: patient.documentId,
           birthDate: new Date(patient.birthDate),
           gender: patient.gender,
           address: patient.address,
           phone: patient.phone,
+          emergencyContact: patient.emergencyContact,
+          observations: patient.observations,
+          medicalHistory: patient.medicalHistory,
+          dentalHistory: patient.dentalHistory,
         }),
       ),
     );
@@ -291,6 +321,48 @@ export class SeedService {
             ? (memberships.get(payment.receivedByUserCode)?.id ?? null)
             : null,
           reference: payment.reference ?? null,
+          voidedAt: payment.voidedAt ? new Date(payment.voidedAt) : null,
+          voidReason: payment.voidReason ?? null,
+        }),
+      ),
+    );
+  }
+
+  private async insertOdontogramEntries(
+    patients: Map<string, Patient>,
+    memberships: Map<string, ClinicMembership>,
+  ) {
+    await this.odontogramRepository.save(
+      initialData.odontogramEntries.map((entry) =>
+        this.odontogramRepository.create({
+          patientId: patients.get(entry.patientCode)!.id,
+          toothCode: entry.toothCode,
+          status: entry.status,
+          observation: entry.observation ?? null,
+          professionalMembershipId: memberships.get(entry.professionalUserCode)!
+            .id,
+        }),
+      ),
+    );
+  }
+
+  private async insertPatientFiles(
+    patients: Map<string, Patient>,
+    memberships: Map<string, ClinicMembership>,
+  ) {
+    await this.patientFileRepository.save(
+      initialData.patientFiles.map((file) =>
+        this.patientFileRepository.create({
+          patientId: patients.get(file.patientCode)!.id,
+          uploadedByMembershipId: memberships.get(file.uploadedByUserCode)!.id,
+          type: file.type,
+          originalName: file.originalName,
+          storedName: file.storedName,
+          path: file.path,
+          url: file.url,
+          mimeType: file.mimeType,
+          size: file.size,
+          description: file.description ?? null,
         }),
       ),
     );

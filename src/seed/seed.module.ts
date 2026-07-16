@@ -10,6 +10,8 @@ import { Payment } from '../payments/entities/payment.entity';
 import { InvoiceItem } from '../invoices/entities/invoice-item.entity';
 import { Appointment } from '../appointments/entities/appointment.entity';
 import { AppointmentType } from '../appointments/entities/appointment-type.entity';
+import { PatientFile } from '../patient-files/entities/patient-file.entity';
+import { OdontogramEntry } from '../odontogram/entities/odontogram-entry.entity';
 import { ClinicMembership } from '../clinic-memberships/entities/clinic-membership.entity';
 
 import { SeedService } from './seed.service';
@@ -30,6 +32,8 @@ import { SeedController } from './seed.controller';
       Invoice,
       InvoiceItem,
       Payment,
+      OdontogramEntry,
+      PatientFile,
     ]),
   ],
 })

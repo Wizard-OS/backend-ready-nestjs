@@ -1,7 +1,10 @@
 import { ValidRoles } from '../../auth/interfaces';
 import { Gender } from '../../common/interfaces/gender.enum';
 import { InvoiceStatus } from '../../invoices/InvoiceStatus/InvoiceStatus.enum';
+import { ToothStatus } from '../../odontogram/interfaces/tooth-status.enum';
 import { InvoiceItemType } from '../../invoices/interfaces/invoice-item-type.enum';
+import { PaymentMethod } from '../../payments/interfaces/payment-method.enum';
+import { PatientFileType } from '../../patient-files/interfaces/patient-file-type.enum';
 import { AppointmentStatus } from '../../appointments/interfaces/AppointmentStatus.enum';
 import { ClinicMembershipRole } from '../../clinic-memberships/interfaces/clinic-membership-role.enum';
 
@@ -20,6 +23,11 @@ export interface SeedClinic {
   name: string;
   timezone: string;
   currency: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  logoUrl?: string;
+  workingHoursJson?: Record<string, unknown>;
 }
 
 export interface SeedMembership {
@@ -37,8 +45,13 @@ export interface SeedPatient {
   lastName: string;
   birthDate: string;
   gender: Gender;
+  documentId?: string;
   address?: string;
   phone?: string;
+  emergencyContact?: string;
+  observations?: string;
+  medicalHistory?: string;
+  dentalHistory?: string;
 }
 
 export interface SeedAppointmentType {
@@ -85,10 +98,33 @@ export interface SeedInvoiceItem {
 export interface SeedPayment {
   invoiceCode: string;
   amount: string;
-  method: string;
+  method: PaymentMethod;
   paidAt: string;
   receivedByUserCode?: string;
   reference?: string;
+  voidedAt?: string;
+  voidReason?: string;
+}
+
+export interface SeedOdontogramEntry {
+  patientCode: string;
+  toothCode: string;
+  status: ToothStatus;
+  observation?: string;
+  professionalUserCode: string;
+}
+
+export interface SeedPatientFile {
+  patientCode: string;
+  uploadedByUserCode: string;
+  type: PatientFileType;
+  originalName: string;
+  storedName: string;
+  path: string;
+  url: string;
+  mimeType: string;
+  size: number;
+  description?: string;
 }
 
 interface SeedData {
@@ -101,6 +137,8 @@ interface SeedData {
   invoices: SeedInvoice[];
   invoiceItems: SeedInvoiceItem[];
   payments: SeedPayment[];
+  odontogramEntries: SeedOdontogramEntry[];
+  patientFiles: SeedPatientFile[];
 }
 
 export const initialData: SeedData = {
@@ -110,6 +148,16 @@ export const initialData: SeedData = {
       name: 'Dental Hub Centro',
       timezone: 'America/Montevideo',
       currency: 'USD',
+      phone: '+59824000000',
+      email: 'centro@dentalhub.com',
+      address: 'Av. 18 de Julio 1234',
+      workingHoursJson: {
+        monday: [{ from: '09:00', to: '18:00' }],
+        tuesday: [{ from: '09:00', to: '18:00' }],
+        wednesday: [{ from: '09:00', to: '18:00' }],
+        thursday: [{ from: '09:00', to: '18:00' }],
+        friday: [{ from: '09:00', to: '17:00' }],
+      },
     },
     {
       code: 'clinic-east',
@@ -181,8 +229,12 @@ export const initialData: SeedData = {
       lastName: 'Perez',
       birthDate: '1993-08-20',
       gender: Gender.FEMALE,
+      documentId: 'UY-ANA-001',
       address: 'Montevideo Centro',
       phone: '+59890000001',
+      emergencyContact: 'Laura Perez +59891000001',
+      medicalHistory: 'Hipertensión controlada',
+      dentalHistory: 'Restauración previa en pieza 36',
     },
     {
       code: 'patient-luis',
@@ -192,8 +244,10 @@ export const initialData: SeedData = {
       lastName: 'Mendez',
       birthDate: '1988-03-11',
       gender: Gender.MALE,
+      documentId: 'UY-LUIS-001',
       address: 'Pocitos',
       phone: '+59890000002',
+      emergencyContact: 'Marta Mendez +59891000002',
     },
     {
       code: 'patient-sofia',
@@ -203,6 +257,7 @@ export const initialData: SeedData = {
       lastName: 'Romero',
       birthDate: '1997-11-05',
       gender: Gender.FEMALE,
+      documentId: 'UY-SOFIA-001',
       address: 'Parque Batlle',
       phone: '+59890000003',
     },
@@ -330,7 +385,7 @@ export const initialData: SeedData = {
     {
       invoiceCode: 'inv-ana-001',
       amount: '40.00',
-      method: 'cash',
+      method: PaymentMethod.CASH,
       paidAt: '2026-03-10T12:45:00.000Z',
       receivedByUserCode: 'admin-1',
       reference: 'PAY-MAIN-ANA-01',
@@ -338,10 +393,39 @@ export const initialData: SeedData = {
     {
       invoiceCode: 'inv-sofia-001',
       amount: '120.00',
-      method: 'card',
+      method: PaymentMethod.MANUAL_CARD,
       paidAt: '2026-03-12T14:45:00.000Z',
       receivedByUserCode: 'doctor-2',
       reference: 'PAY-EAST-SOFIA-01',
+    },
+  ],
+  odontogramEntries: [
+    {
+      patientCode: 'patient-ana',
+      toothCode: '36',
+      status: ToothStatus.RESTORED,
+      observation: 'Restauración existente en buen estado',
+      professionalUserCode: 'doctor-1',
+    },
+    {
+      patientCode: 'patient-luis',
+      toothCode: '11',
+      status: ToothStatus.HEALTHY,
+      professionalUserCode: 'doctor-1',
+    },
+  ],
+  patientFiles: [
+    {
+      patientCode: 'patient-ana',
+      uploadedByUserCode: 'admin-1',
+      type: PatientFileType.PDF,
+      originalName: 'anamnesis-ana.pdf',
+      storedName: 'seed-anamnesis-ana.pdf',
+      path: 'uploads/patient-files/seed-anamnesis-ana.pdf',
+      url: '/uploads/patient-files/seed-anamnesis-ana.pdf',
+      mimeType: 'application/pdf',
+      size: 1024,
+      description: 'Documento inicial de anamnesis',
     },
   ],
 };
