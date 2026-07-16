@@ -21,13 +21,21 @@ import { CreateAppointmentDto } from './dto/create-appointment.dto';
 import { UpdateAppointmentDto } from './dto/update-appointment.dto';
 import { CreateAppointmentTypeDto } from './dto/create-appointment-type.dto';
 import { UpdateAppointmentTypeDto } from './dto/update-appointment-type.dto';
-import { AuthClinic, GetClinicId } from '../auth/decorators';
+import { AuthClinic, ClinicRoles, GetClinicId } from '../auth/decorators';
+import { ClinicMembershipRole } from '../clinic-memberships/interfaces/clinic-membership-role.enum';
 
 @ApiTags('Appointments')
 @ApiBearerAuth()
 @ApiSecurity('x-clinic-id')
 @Controller('appointments')
 @AuthClinic()
+@ClinicRoles(
+  ClinicMembershipRole.owner,
+  ClinicMembershipRole.admin,
+  ClinicMembershipRole.odontologist,
+  ClinicMembershipRole.receptionist,
+  ClinicMembershipRole.assistant,
+)
 export class AppointmentsController {
   constructor(private readonly appointmentService: AppointmentsService) {}
 
