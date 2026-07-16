@@ -21,16 +21,23 @@ import { CreateClinicalNoteDto } from './dto/create-clinical-note.dto';
 import { UpdateClinicalNoteDto } from './dto/update-clinical-note.dto';
 import {
   AuthClinic,
+  ClinicRoles,
   GetClinicId,
   GetClinicMembershipId,
   GetUser,
 } from '../auth/decorators';
+import { ClinicMembershipRole } from '../clinic-memberships/interfaces/clinic-membership-role.enum';
 
 @ApiTags('Clinical Notes')
 @ApiBearerAuth()
 @ApiSecurity('x-clinic-id')
 @Controller('clinical-notes')
 @AuthClinic()
+@ClinicRoles(
+  ClinicMembershipRole.owner,
+  ClinicMembershipRole.admin,
+  ClinicMembershipRole.odontologist,
+)
 export class ClinicalNotesController {
   constructor(private readonly clinicalNotesService: ClinicalNotesService) {}
 

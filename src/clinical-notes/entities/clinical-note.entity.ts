@@ -44,6 +44,24 @@ export class ClinicalNote {
   @Column({ type: 'text' })
   content: string;
 
+  @Column({ type: 'text', nullable: true })
+  reason: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  diagnosis: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  procedure: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  indications: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  observations: string | null;
+
+  @Column('text', { array: true, default: [] })
+  toothCodes: string[];
+
   @CreateDateColumn()
   createdAt: Date;
 }
