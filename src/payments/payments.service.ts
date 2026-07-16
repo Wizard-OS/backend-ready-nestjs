@@ -11,6 +11,7 @@ import { Payment } from './entities/payment.entity';
 import { Invoice } from '../invoices/entities/invoice.entity';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { UpdatePaymentDto } from './dto/update-payment.dto';
+import { VoidPaymentDto } from './dto/void-payment.dto';
 import { InvoiceStatus } from '../invoices/InvoiceStatus/InvoiceStatus.enum';
 
 @Injectable()
@@ -35,7 +36,13 @@ export class PaymentsService {
       );
     }
 
-    const payment = this.paymentRepository.create(dto);
+    const payment = this.paymentRepository.create({
+      ...dto,
+      patientId: dto.patientId ?? invoice.patientId,
+      treatmentId: dto.treatmentId ?? invoice.treatmentId ?? null,
+      voidedAt: null,
+      voidReason: null,
+    });
     await this.paymentRepository.save(payment);
 
     await this.refreshInvoiceStatus(invoice.id);
@@ -71,6 +78,9 @@ export class PaymentsService {
 
   async update(clinicId: string, id: string, dto: UpdatePaymentDto) {
     const payment = await this.findOne(clinicId, id);
+    if (payment.voidedAt) {
+      throw new BadRequestException('Voided payments cannot be updated');
+    }
 
     const invoice = await this.findInvoiceInClinic(payment.invoiceId, clinicId);
 
@@ -93,12 +103,19 @@ export class PaymentsService {
   }
 
   async remove(clinicId: string, id: string) {
+    return this.void(clinicId, id, { reason: 'Deleted through API' });
+  }
+
+  async void(clinicId: string, id: string, dto: VoidPaymentDto) {
     const payment = await this.findOne(clinicId, id);
 
-    await this.paymentRepository.remove(payment);
+    payment.voidedAt = new Date();
+    payment.voidReason = dto.reason;
+    await this.paymentRepository.save(payment);
+
     await this.refreshInvoiceStatus(payment.invoiceId);
 
-    return { message: `Payment ${id} removed` };
+    return await this.findOne(clinicId, id);
   }
 
   private async findInvoiceInClinic(invoiceId: string, clinicId: string) {
@@ -116,10 +133,13 @@ export class PaymentsService {
   private async getPaidAmount(invoiceId: string) {
     const payments = await this.paymentRepository.find({
       where: { invoiceId },
-      select: { amount: true },
+      select: { amount: true, voidedAt: true },
     });
 
-    return payments.reduce((acc, payment) => acc + Number(payment.amount), 0);
+    return payments.reduce(
+      (acc, payment) => acc + (payment.voidedAt ? 0 : Number(payment.amount)),
+      0,
+    );
   }
 
   private async refreshInvoiceStatus(invoiceId: string) {
@@ -136,6 +156,8 @@ export class PaymentsService {
       invoice.status = InvoiceStatus.PAID;
     } else if (paidAmount > 0) {
       invoice.status = InvoiceStatus.PARTIALLY_PAID;
+    } else if (invoice.status === InvoiceStatus.ACCEPTED) {
+      invoice.status = InvoiceStatus.ACCEPTED;
     } else if (invoice.dueAt && new Date(invoice.dueAt) < new Date()) {
       invoice.status = InvoiceStatus.OVERDUE;
     } else {

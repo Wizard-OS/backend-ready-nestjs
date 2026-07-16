@@ -19,13 +19,20 @@ import {
 import { PaymentsService } from './payments.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { UpdatePaymentDto } from './dto/update-payment.dto';
-import { AuthClinic, GetClinicId } from '../auth/decorators';
+import { VoidPaymentDto } from './dto/void-payment.dto';
+import { AuthClinic, ClinicRoles, GetClinicId } from '../auth/decorators';
+import { ClinicMembershipRole } from '../clinic-memberships/interfaces/clinic-membership-role.enum';
 
 @ApiTags('Payments')
 @ApiBearerAuth()
 @ApiSecurity('x-clinic-id')
 @Controller('payments')
 @AuthClinic()
+@ClinicRoles(
+  ClinicMembershipRole.owner,
+  ClinicMembershipRole.admin,
+  ClinicMembershipRole.receptionist,
+)
 export class PaymentsController {
   constructor(private readonly paymentsService: PaymentsService) {}
 
@@ -72,5 +79,17 @@ export class PaymentsController {
   @ApiResponse({ status: 200, description: 'Pago eliminado' })
   remove(@GetClinicId() clinicId: string, @Param('id') id: string) {
     return this.paymentsService.remove(clinicId, id);
+  }
+
+  @Patch(':id/void')
+  @ApiOperation({ summary: 'Anular pago' })
+  @ApiParam({ name: 'id', description: 'UUID del pago' })
+  @ApiResponse({ status: 200, description: 'Pago anulado' })
+  void(
+    @GetClinicId() clinicId: string,
+    @Param('id') id: string,
+    @Body() voidPaymentDto: VoidPaymentDto,
+  ) {
+    return this.paymentsService.void(clinicId, id, voidPaymentDto);
   }
 }
