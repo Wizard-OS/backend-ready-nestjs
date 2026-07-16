@@ -27,7 +27,9 @@ import { PaymentsModule } from './payments/payments.module';
 import { RemindersModule } from './reminders/reminders.module';
 import { TreatmentsModule } from './treatments/treatments.module';
 import { HelpCenterModule } from './help-center/help-center.module';
+import { OdontogramModule } from './odontogram/odontogram.module';
 import { AppointmentsModule } from './appointments/appointments.module';
+import { PatientFilesModule } from './patient-files/patient-files.module';
 import { UserSessionsModule } from './user-sessions/user-sessions.module';
 import { ClinicalNotesModule } from './clinical-notes/clinical-notes.module';
 import { PaymentMethodsModule } from './payment-methods/payment-methods.module';
@@ -97,6 +99,8 @@ import { NotificationPreferencesModule } from './notification-preferences/notifi
     ClinicalRecordsModule,
     ClinicalNotesModule,
     TreatmentSessionsModule,
+    OdontogramModule,
+    PatientFilesModule,
     RemindersModule,
     NotificationPreferencesModule,
     UserSessionsModule,
