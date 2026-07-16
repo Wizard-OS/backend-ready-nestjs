@@ -21,11 +21,26 @@ export class Clinic {
   @Column('text')
   name: string;
 
+  @Column('text', { nullable: true })
+  phone: string | null;
+
+  @Column('text', { nullable: true })
+  email: string | null;
+
+  @Column('text', { nullable: true })
+  address: string | null;
+
+  @Column('text', { nullable: true })
+  logoUrl: string | null;
+
   @Column('text', { default: 'America/Montevideo' })
   timezone: string;
 
   @Column('text', { default: 'USD' })
   currency: string;
+
+  @Column('jsonb', { default: {} })
+  workingHoursJson: Record<string, unknown>;
 
   @Column('bool', { default: true })
   isActive: boolean;
