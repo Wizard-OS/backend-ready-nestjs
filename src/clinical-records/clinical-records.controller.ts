@@ -19,13 +19,19 @@ import {
 import { ClinicalRecordsService } from './clinical-records.service';
 import { CreateClinicalRecordDto } from './dto/create-clinical-record.dto';
 import { UpdateClinicalRecordDto } from './dto/update-clinical-record.dto';
-import { AuthClinic, GetClinicId } from '../auth/decorators';
+import { AuthClinic, ClinicRoles, GetClinicId } from '../auth/decorators';
+import { ClinicMembershipRole } from '../clinic-memberships/interfaces/clinic-membership-role.enum';
 
 @ApiTags('Clinical Records')
 @ApiBearerAuth()
 @ApiSecurity('x-clinic-id')
 @Controller('clinical-records')
 @AuthClinic()
+@ClinicRoles(
+  ClinicMembershipRole.owner,
+  ClinicMembershipRole.admin,
+  ClinicMembershipRole.odontologist,
+)
 export class ClinicalRecordsController {
   constructor(
     private readonly clinicalRecordsService: ClinicalRecordsService,

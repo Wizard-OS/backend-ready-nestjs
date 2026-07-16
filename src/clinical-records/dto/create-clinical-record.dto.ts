@@ -21,4 +21,28 @@ export class CreateClinicalRecordDto {
   @IsString()
   @IsOptional()
   chronicDiseases?: string;
+
+  @ApiPropertyOptional({
+    example: 'Cirugías previas sin complicaciones',
+    description: 'Antecedentes médicos generales',
+  })
+  @IsString()
+  @IsOptional()
+  medicalHistory?: string;
+
+  @ApiPropertyOptional({
+    example: 'Tratamiento de conducto en pieza 11',
+    description: 'Antecedentes odontológicos',
+  })
+  @IsString()
+  @IsOptional()
+  dentalHistory?: string;
+
+  @ApiPropertyOptional({
+    example: 'Paciente ansioso en consulta',
+    description: 'Observaciones clínicas generales',
+  })
+  @IsString()
+  @IsOptional()
+  observations?: string;
 }
