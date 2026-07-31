@@ -38,6 +38,9 @@ import {
   LoginUserDto,
   UpdateProfileDto,
   ChangePasswordDto,
+  ForgotPasswordDto,
+  VerifyOtpDto,
+  ResetPasswordDto,
 } from './dto';
 import { User } from './entities/user.entity';
 import { UserRoleGuard } from './guards/user-role.guard';
@@ -65,6 +68,32 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Credenciales inválidas' })
   loginUser(@Body() loginUserDto: LoginUserDto) {
     return this.authService.login(loginUserDto);
+  }
+
+  @Post('forgot-password')
+  @ApiOperation({ summary: 'Solicitar código OTP para recuperar contraseña' })
+  @ApiResponse({
+    status: 201,
+    description: 'Si el email existe, se genera un código de recuperación',
+  })
+  forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto) {
+    return this.authService.forgotPassword(forgotPasswordDto);
+  }
+
+  @Post('verify-otp')
+  @ApiOperation({ summary: 'Validar código OTP de recuperación' })
+  @ApiResponse({ status: 201, description: 'OTP válido' })
+  @ApiResponse({ status: 400, description: 'OTP inválido o expirado' })
+  verifyOtp(@Body() verifyOtpDto: VerifyOtpDto) {
+    return this.authService.verifyOtp(verifyOtpDto);
+  }
+
+  @Post('reset-password')
+  @ApiOperation({ summary: 'Restablecer contraseña usando OTP' })
+  @ApiResponse({ status: 201, description: 'Contraseña restablecida' })
+  @ApiResponse({ status: 400, description: 'OTP inválido o expirado' })
+  resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
+    return this.authService.resetPassword(resetPasswordDto);
   }
 
   @Get('check-status')

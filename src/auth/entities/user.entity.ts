@@ -59,6 +59,24 @@ export class User {
   })
   profilePhotoUrl?: string;
 
+  @Column('text', {
+    nullable: true,
+    select: false,
+  })
+  passwordResetOtpHash?: string | null;
+
+  @Column('timestamp', {
+    nullable: true,
+    select: false,
+  })
+  passwordResetOtpExpiresAt?: Date | null;
+
+  @Column('timestamp', {
+    nullable: true,
+    select: false,
+  })
+  passwordResetOtpUsedAt?: Date | null;
+
   @OneToMany(() => Appointment, (appointment) => appointment.dentist)
   appointments: Appointment[];
 

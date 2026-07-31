@@ -8,6 +8,7 @@ import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import * as bcrypt from 'bcrypt';
+import { randomInt } from 'crypto';
 import { Repository } from 'typeorm';
 
 import { JwtPayload } from './interfaces';
@@ -18,10 +19,15 @@ import {
   LoginUserDto,
   UpdateProfileDto,
   ChangePasswordDto,
+  ForgotPasswordDto,
+  VerifyOtpDto,
+  ResetPasswordDto,
 } from './dto';
 
 @Injectable()
 export class AuthService {
+  private static readonly passwordResetOtpTtlMs = 10 * 60 * 1000;
+
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
@@ -83,6 +89,64 @@ export class AuthService {
 
   async checkAuthStatus(user: User) {
     return this.buildAuthResponse(user);
+  }
+
+  async forgotPassword(forgotPasswordDto: ForgotPasswordDto) {
+    const email = forgotPasswordDto.email.toLowerCase().trim();
+    const user = await this.userRepository.findOne({
+      where: { email },
+      select: { id: true, email: true },
+    });
+
+    const genericResponse: { message: string; devOtp?: string } = {
+      message: 'If the email exists, a password reset code has been sent',
+    };
+
+    if (!user) {
+      return genericResponse;
+    }
+
+    const otp = randomInt(0, 10000).toString().padStart(4, '0');
+    const expiresAt = new Date(Date.now() + AuthService.passwordResetOtpTtlMs);
+
+    await this.userRepository.update(user.id, {
+      passwordResetOtpHash: bcrypt.hashSync(otp, 10),
+      passwordResetOtpExpiresAt: expiresAt,
+      passwordResetOtpUsedAt: null,
+    });
+
+    // TODO: Send the OTP through the configured email provider.
+    if (process.env.NODE_ENV !== 'production') {
+      genericResponse.devOtp = otp;
+      console.log(`Password reset OTP for ${email}: ${otp}`);
+    }
+
+    return genericResponse;
+  }
+
+  async verifyOtp(verifyOtpDto: VerifyOtpDto) {
+    await this.assertValidPasswordResetOtp(
+      verifyOtpDto.email,
+      verifyOtpDto.otp,
+    );
+
+    return { message: 'OTP verified successfully' };
+  }
+
+  async resetPassword(resetPasswordDto: ResetPasswordDto) {
+    const user = await this.assertValidPasswordResetOtp(
+      resetPasswordDto.email,
+      resetPasswordDto.otp,
+    );
+
+    await this.userRepository.update(user.id, {
+      password: bcrypt.hashSync(resetPasswordDto.newPassword, 10),
+      passwordResetOtpHash: null,
+      passwordResetOtpExpiresAt: null,
+      passwordResetOtpUsedAt: new Date(),
+    });
+
+    return { message: 'Password reset successfully' };
   }
 
   async updateProfilePhoto(
@@ -182,6 +246,38 @@ export class AuthService {
 
   private getJwtToken(payload: JwtPayload) {
     return this.jwtService.sign(payload);
+  }
+
+  private async assertValidPasswordResetOtp(email: string, otp: string) {
+    const user = await this.userRepository.findOne({
+      where: { email: email.toLowerCase().trim() },
+      select: {
+        id: true,
+        email: true,
+        passwordResetOtpHash: true,
+        passwordResetOtpExpiresAt: true,
+        passwordResetOtpUsedAt: true,
+      },
+    });
+
+    if (
+      !user ||
+      !user.passwordResetOtpHash ||
+      !user.passwordResetOtpExpiresAt ||
+      user.passwordResetOtpUsedAt
+    ) {
+      throw new BadRequestException('Invalid or expired OTP');
+    }
+
+    if (user.passwordResetOtpExpiresAt.getTime() <= Date.now()) {
+      throw new BadRequestException('Invalid or expired OTP');
+    }
+
+    if (!bcrypt.compareSync(otp, user.passwordResetOtpHash)) {
+      throw new BadRequestException('Invalid or expired OTP');
+    }
+
+    return user;
   }
 
   private async buildAuthResponse(user: User) {
