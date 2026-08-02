@@ -1,11 +1,14 @@
 import {
   BadRequestException,
+  InternalServerErrorException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import type { Express } from 'express';
+import { promises as fs } from 'fs';
+import * as path from 'path';
 
 import { Patient } from '../patients/entities/patient.entity';
 import { Treatment } from '../treatments/entities/treatment.entity';
@@ -14,6 +17,10 @@ import { ClinicalNote } from '../clinical-notes/entities/clinical-note.entity';
 import { PatientFile } from './entities/patient-file.entity';
 import { CreatePatientFileDto } from './dto/create-patient-file.dto';
 import { PatientFileType } from './interfaces/patient-file-type.enum';
+import {
+  ClinicAccessContext,
+  PatientAccessService,
+} from '../patients/services/patient-access.service';
 
 @Injectable()
 export class PatientFilesService {
@@ -32,10 +39,12 @@ export class PatientFilesService {
 
     @InjectRepository(Treatment)
     private readonly treatmentRepository: Repository<Treatment>,
+
+    private readonly patientAccessService: PatientAccessService,
   ) {}
 
   async create(
-    clinicId: string,
+    context: ClinicAccessContext,
     patientId: string,
     uploadedByMembershipId: string,
     file: Express.Multer.File,
@@ -46,13 +55,14 @@ export class PatientFilesService {
       throw new BadRequestException('No file uploaded');
     }
 
-    await this.assertPatientInClinic(patientId, clinicId);
+    this.patientAccessService.assertCanManageClinical(context);
+    await this.patientAccessService.assertPatientAccessible(context, patientId);
 
     if (dto.appointmentId) {
       await this.assertAppointmentForPatient(
         dto.appointmentId,
         patientId,
-        clinicId,
+        context.clinicId,
       );
     }
 
@@ -60,7 +70,7 @@ export class PatientFilesService {
       await this.assertClinicalNoteForPatient(
         dto.clinicalNoteId,
         patientId,
-        clinicId,
+        context.clinicId,
       );
     }
 
@@ -68,7 +78,7 @@ export class PatientFilesService {
       await this.assertTreatmentForPatient(
         dto.treatmentId,
         patientId,
-        clinicId,
+        context.clinicId,
       );
     }
 
@@ -91,8 +101,8 @@ export class PatientFilesService {
     return await this.patientFileRepository.save(patientFile);
   }
 
-  async findAllByPatient(clinicId: string, patientId: string) {
-    await this.assertPatientInClinic(patientId, clinicId);
+  async findAllByPatient(context: ClinicAccessContext, patientId: string) {
+    await this.patientAccessService.assertPatientAccessible(context, patientId);
 
     return await this.patientFileRepository.find({
       where: { patientId },
@@ -100,23 +110,32 @@ export class PatientFilesService {
     });
   }
 
-  async findOne(clinicId: string, id: string) {
+  async findOne(context: ClinicAccessContext, id: string) {
     const patientFile = await this.patientFileRepository
       .createQueryBuilder('file')
       .innerJoin('file.patient', 'patient')
       .where('file.id = :id', { id })
-      .andWhere('patient.clinicId = :clinicId', { clinicId })
+      .andWhere('patient.clinicId = :clinicId', {
+        clinicId: context.clinicId,
+      })
       .getOne();
 
     if (!patientFile) {
       throw new NotFoundException(`Patient file ${id} not found`);
     }
 
+    await this.patientAccessService.assertPatientAccessible(
+      context,
+      patientFile.patientId,
+    );
+
     return patientFile;
   }
 
-  async remove(clinicId: string, id: string) {
-    const patientFile = await this.findOne(clinicId, id);
+  async remove(context: ClinicAccessContext, id: string) {
+    this.patientAccessService.assertCanManageClinical(context);
+    const patientFile = await this.findOne(context, id);
+    await this.deleteStoredFile(patientFile.storedName);
     await this.patientFileRepository.softRemove(patientFile);
     return { message: `Patient file ${id} deleted` };
   }
@@ -125,6 +144,31 @@ export class PatientFilesService {
     if (mimeType.startsWith('image/')) return PatientFileType.IMAGE;
     if (mimeType === 'application/pdf') return PatientFileType.PDF;
     return PatientFileType.OTHER;
+  }
+
+  private async deleteStoredFile(storedName: string) {
+    const uploadDir = path.resolve(process.cwd(), 'uploads', 'patient-files');
+    const filePath = path.resolve(uploadDir, storedName);
+
+    if (!filePath.startsWith(`${uploadDir}${path.sep}`)) {
+      throw new BadRequestException('Invalid stored file path');
+    }
+
+    try {
+      await fs.unlink(filePath);
+    } catch (error) {
+      if (
+        error instanceof Object &&
+        'code' in error &&
+        error.code === 'ENOENT'
+      ) {
+        return;
+      }
+
+      throw new InternalServerErrorException(
+        'Could not delete stored patient file',
+      );
+    }
   }
 
   private async assertPatientInClinic(patientId: string, clinicId: string) {

@@ -35,8 +35,11 @@ import {
   ClinicRoles,
   GetClinicId,
   GetClinicMembershipId,
+  GetClinicMembershipRole,
+  GetClinicPermissions,
 } from '../auth/decorators';
 import { ClinicMembershipRole } from '../clinic-memberships/interfaces/clinic-membership-role.enum';
+import { ClinicAccessContext } from '../patients/services/patient-access.service';
 
 const ALLOWED_MIME_TYPES = new Set([
   'application/pdf',
@@ -112,6 +115,8 @@ export class PatientFilesController {
   create(
     @GetClinicId() clinicId: string,
     @GetClinicMembershipId() membershipId: string,
+    @GetClinicMembershipRole() role: ClinicMembershipRole,
+    @GetClinicPermissions() permissionsJson: Record<string, boolean>,
     @Param('patientId') patientId: string,
     @UploadedFile() file: Express.Multer.File,
     @Body() dto: CreatePatientFileDto,
@@ -119,7 +124,7 @@ export class PatientFilesController {
   ) {
     const baseUrl = `${request.protocol}://${request.get('host')}`;
     return this.patientFilesService.create(
-      clinicId,
+      this.context(clinicId, membershipId, role, permissionsJson),
       patientId,
       membershipId,
       file,
@@ -134,24 +139,57 @@ export class PatientFilesController {
   @ApiResponse({ status: 200, description: 'Archivos del paciente' })
   findAllByPatient(
     @GetClinicId() clinicId: string,
+    @GetClinicMembershipId() membershipId: string,
+    @GetClinicMembershipRole() role: ClinicMembershipRole,
+    @GetClinicPermissions() permissionsJson: Record<string, boolean>,
     @Param('patientId') patientId: string,
   ) {
-    return this.patientFilesService.findAllByPatient(clinicId, patientId);
+    return this.patientFilesService.findAllByPatient(
+      this.context(clinicId, membershipId, role, permissionsJson),
+      patientId,
+    );
   }
 
   @Get('patient-files/:id')
   @ApiOperation({ summary: 'Obtener archivo de paciente por ID' })
   @ApiParam({ name: 'id', description: 'UUID del archivo' })
   @ApiResponse({ status: 200, description: 'Archivo encontrado' })
-  findOne(@GetClinicId() clinicId: string, @Param('id') id: string) {
-    return this.patientFilesService.findOne(clinicId, id);
+  findOne(
+    @GetClinicId() clinicId: string,
+    @GetClinicMembershipId() membershipId: string,
+    @GetClinicMembershipRole() role: ClinicMembershipRole,
+    @GetClinicPermissions() permissionsJson: Record<string, boolean>,
+    @Param('id') id: string,
+  ) {
+    return this.patientFilesService.findOne(
+      this.context(clinicId, membershipId, role, permissionsJson),
+      id,
+    );
   }
 
   @Delete('patient-files/:id')
   @ApiOperation({ summary: 'Eliminar archivo de paciente' })
   @ApiParam({ name: 'id', description: 'UUID del archivo' })
   @ApiResponse({ status: 200, description: 'Archivo eliminado' })
-  remove(@GetClinicId() clinicId: string, @Param('id') id: string) {
-    return this.patientFilesService.remove(clinicId, id);
+  remove(
+    @GetClinicId() clinicId: string,
+    @GetClinicMembershipId() membershipId: string,
+    @GetClinicMembershipRole() role: ClinicMembershipRole,
+    @GetClinicPermissions() permissionsJson: Record<string, boolean>,
+    @Param('id') id: string,
+  ) {
+    return this.patientFilesService.remove(
+      this.context(clinicId, membershipId, role, permissionsJson),
+      id,
+    );
+  }
+
+  private context(
+    clinicId: string,
+    membershipId: string,
+    role: ClinicMembershipRole,
+    permissionsJson: Record<string, boolean> | undefined,
+  ): ClinicAccessContext {
+    return { clinicId, membershipId, role, permissionsJson };
   }
 }

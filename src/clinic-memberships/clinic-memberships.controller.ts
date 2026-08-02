@@ -16,7 +16,13 @@ import {
   ApiSecurity,
 } from '@nestjs/swagger';
 
-import { AuthClinic, ClinicRoles, GetClinicId } from '../auth/decorators';
+import {
+  AuthClinic,
+  ClinicPermissions,
+  ClinicRoles,
+  GetClinicId,
+} from '../auth/decorators';
+import { ClinicPermission } from '../auth/interfaces';
 import { ClinicMembershipsService } from './clinic-memberships.service';
 import { CreateClinicMembershipDto } from './dto/create-clinic-membership.dto';
 import { UpdateClinicMembershipDto } from './dto/update-clinic-membership.dto';
@@ -28,6 +34,7 @@ import { ClinicMembershipRole } from './interfaces/clinic-membership-role.enum';
 @Controller('clinic-memberships')
 @AuthClinic()
 @ClinicRoles(ClinicMembershipRole.owner, ClinicMembershipRole.admin)
+@ClinicPermissions(ClinicPermission.manageTeam)
 export class ClinicMembershipsController {
   constructor(
     private readonly clinicMembershipsService: ClinicMembershipsService,

@@ -7,6 +7,7 @@ import { ClinicRoleGuard } from '../guards/clinic-role.guard';
 import { UserRoleGuard } from '../guards/user-role.guard';
 import { RoleProtected } from './role-protected.decorator';
 import { ClinicScopeGuard } from '../guards/clinic-scope.guard';
+import { ClinicPermissionGuard } from '../guards/clinic-permission.guard';
 
 export function Auth(...roles: ValidRoles[]) {
   return applyDecorators(
@@ -18,6 +19,12 @@ export function Auth(...roles: ValidRoles[]) {
 export function AuthClinic(...roles: ValidRoles[]) {
   return applyDecorators(
     RoleProtected(...roles),
-    UseGuards(AuthGuard(), UserRoleGuard, ClinicScopeGuard, ClinicRoleGuard),
+    UseGuards(
+      AuthGuard(),
+      UserRoleGuard,
+      ClinicScopeGuard,
+      ClinicRoleGuard,
+      ClinicPermissionGuard,
+    ),
   );
 }

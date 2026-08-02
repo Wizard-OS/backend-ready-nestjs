@@ -15,8 +15,11 @@ import {
   ClinicRoles,
   GetClinicId,
   GetClinicMembershipId,
+  GetClinicMembershipRole,
+  GetClinicPermissions,
 } from '../auth/decorators';
 import { ClinicMembershipRole } from '../clinic-memberships/interfaces/clinic-membership-role.enum';
+import { ClinicAccessContext } from '../patients/services/patient-access.service';
 
 @ApiTags('Odontogram')
 @ApiBearerAuth()
@@ -37,9 +40,15 @@ export class OdontogramController {
   @ApiResponse({ status: 200, description: 'Odontograma del paciente' })
   findByPatient(
     @GetClinicId() clinicId: string,
+    @GetClinicMembershipId() membershipId: string,
+    @GetClinicMembershipRole() role: ClinicMembershipRole,
+    @GetClinicPermissions() permissionsJson: Record<string, boolean>,
     @Param('patientId') patientId: string,
   ) {
-    return this.odontogramService.findByPatient(clinicId, patientId);
+    return this.odontogramService.findByPatient(
+      this.context(clinicId, membershipId, role, permissionsJson),
+      patientId,
+    );
   }
 
   @Patch('teeth/:toothCode')
@@ -50,16 +59,27 @@ export class OdontogramController {
   updateTooth(
     @GetClinicId() clinicId: string,
     @GetClinicMembershipId() membershipId: string,
+    @GetClinicMembershipRole() role: ClinicMembershipRole,
+    @GetClinicPermissions() permissionsJson: Record<string, boolean>,
     @Param('patientId') patientId: string,
     @Param('toothCode') toothCode: string,
     @Body() dto: UpdateOdontogramToothDto,
   ) {
     return this.odontogramService.updateTooth(
-      clinicId,
+      this.context(clinicId, membershipId, role, permissionsJson),
       patientId,
       toothCode,
       membershipId,
       dto,
     );
+  }
+
+  private context(
+    clinicId: string,
+    membershipId: string,
+    role: ClinicMembershipRole,
+    permissionsJson: Record<string, boolean> | undefined,
+  ): ClinicAccessContext {
+    return { clinicId, membershipId, role, permissionsJson };
   }
 }

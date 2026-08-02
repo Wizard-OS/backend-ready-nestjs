@@ -11,6 +11,10 @@ import { Treatment } from '../treatments/entities/treatment.entity';
 import { ClinicalNote } from '../clinical-notes/entities/clinical-note.entity';
 import { OdontogramEntry } from './entities/odontogram-entry.entity';
 import { UpdateOdontogramToothDto } from './dto/update-odontogram-tooth.dto';
+import {
+  ClinicAccessContext,
+  PatientAccessService,
+} from '../patients/services/patient-access.service';
 
 const ADULT_TOOTH_CODES = new Set([
   '11',
@@ -61,10 +65,12 @@ export class OdontogramService {
 
     @InjectRepository(Treatment)
     private readonly treatmentRepository: Repository<Treatment>,
+
+    private readonly patientAccessService: PatientAccessService,
   ) {}
 
-  async findByPatient(clinicId: string, patientId: string) {
-    await this.assertPatientInClinic(patientId, clinicId);
+  async findByPatient(context: ClinicAccessContext, patientId: string) {
+    await this.patientAccessService.assertPatientAccessible(context, patientId);
 
     return await this.odontogramRepository.find({
       where: { patientId },
@@ -73,20 +79,21 @@ export class OdontogramService {
   }
 
   async updateTooth(
-    clinicId: string,
+    context: ClinicAccessContext,
     patientId: string,
     toothCode: string,
     professionalMembershipId: string,
     dto: UpdateOdontogramToothDto,
   ) {
+    this.patientAccessService.assertCanManageClinical(context);
     this.assertAdultToothCode(toothCode);
-    await this.assertPatientInClinic(patientId, clinicId);
+    await this.patientAccessService.assertPatientAccessible(context, patientId);
 
     if (dto.clinicalNoteId) {
       await this.assertClinicalNoteForPatient(
         dto.clinicalNoteId,
         patientId,
-        clinicId,
+        context.clinicId,
       );
     }
 
@@ -94,7 +101,7 @@ export class OdontogramService {
       await this.assertTreatmentForPatient(
         dto.treatmentId,
         patientId,
-        clinicId,
+        context.clinicId,
       );
     }
 

@@ -8,7 +8,13 @@ import {
 } from '@nestjs/swagger';
 
 import { CommonService } from './common.service';
-import { AuthClinic, ClinicRoles, GetClinicId } from '../auth/decorators';
+import {
+  AuthClinic,
+  ClinicPermissions,
+  ClinicRoles,
+  GetClinicId,
+} from '../auth/decorators';
+import { ClinicPermission } from '../auth/interfaces';
 import { ClinicMembershipRole } from '../clinic-memberships/interfaces/clinic-membership-role.enum';
 
 @ApiTags('Common')
@@ -21,6 +27,7 @@ import { ClinicMembershipRole } from '../clinic-memberships/interfaces/clinic-me
   ClinicMembershipRole.admin,
   ClinicMembershipRole.receptionist,
 )
+@ClinicPermissions(ClinicPermission.viewReports)
 export class CommonController {
   constructor(private readonly commonService: CommonService) {}
 

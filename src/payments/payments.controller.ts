@@ -20,7 +20,13 @@ import { PaymentsService } from './payments.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { UpdatePaymentDto } from './dto/update-payment.dto';
 import { VoidPaymentDto } from './dto/void-payment.dto';
-import { AuthClinic, ClinicRoles, GetClinicId } from '../auth/decorators';
+import {
+  AuthClinic,
+  ClinicPermissions,
+  ClinicRoles,
+  GetClinicId,
+} from '../auth/decorators';
+import { ClinicPermission } from '../auth/interfaces';
 import { ClinicMembershipRole } from '../clinic-memberships/interfaces/clinic-membership-role.enum';
 
 @ApiTags('Payments')
@@ -33,6 +39,7 @@ import { ClinicMembershipRole } from '../clinic-memberships/interfaces/clinic-me
   ClinicMembershipRole.admin,
   ClinicMembershipRole.receptionist,
 )
+@ClinicPermissions(ClinicPermission.manageFinancial)
 export class PaymentsController {
   constructor(private readonly paymentsService: PaymentsService) {}
 

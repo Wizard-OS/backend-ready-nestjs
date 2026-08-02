@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { Patient } from '../patients/entities/patient.entity';
+import { PatientsModule } from '../patients/patients.module';
 import { Treatment } from '../treatments/entities/treatment.entity';
 import { Appointment } from '../appointments/entities/appointment.entity';
 import { ClinicalNote } from '../clinical-notes/entities/clinical-note.entity';
@@ -13,6 +14,7 @@ import { PatientFilesController } from './patient-files.controller';
   controllers: [PatientFilesController],
   providers: [PatientFilesService],
   imports: [
+    PatientsModule,
     TypeOrmModule.forFeature([
       PatientFile,
       Patient,

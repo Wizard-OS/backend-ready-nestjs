@@ -21,8 +21,16 @@ import { CreateAppointmentDto } from './dto/create-appointment.dto';
 import { UpdateAppointmentDto } from './dto/update-appointment.dto';
 import { CreateAppointmentTypeDto } from './dto/create-appointment-type.dto';
 import { UpdateAppointmentTypeDto } from './dto/update-appointment-type.dto';
-import { AuthClinic, ClinicRoles, GetClinicId } from '../auth/decorators';
+import {
+  AuthClinic,
+  ClinicRoles,
+  GetClinicId,
+  GetClinicMembershipId,
+  GetClinicMembershipRole,
+  GetClinicPermissions,
+} from '../auth/decorators';
 import { ClinicMembershipRole } from '../clinic-memberships/interfaces/clinic-membership-role.enum';
+import { ClinicAccessContext } from '../patients/services/patient-access.service';
 
 @ApiTags('Appointments')
 @ApiBearerAuth()
@@ -92,16 +100,29 @@ export class AppointmentsController {
   })
   create(
     @GetClinicId() clinicId: string,
+    @GetClinicMembershipId() membershipId: string,
+    @GetClinicMembershipRole() role: ClinicMembershipRole,
+    @GetClinicPermissions() permissionsJson: Record<string, boolean>,
     @Body() createAppointmentDto: CreateAppointmentDto,
   ) {
-    return this.appointmentService.create(clinicId, createAppointmentDto);
+    return this.appointmentService.create(
+      this.context(clinicId, membershipId, role, permissionsJson),
+      createAppointmentDto,
+    );
   }
 
   @Get()
   @ApiOperation({ summary: 'Listar citas de la clínica' })
   @ApiResponse({ status: 200, description: 'Lista de citas' })
-  findAll(@GetClinicId() clinicId: string) {
-    return this.appointmentService.findAll(clinicId);
+  findAll(
+    @GetClinicId() clinicId: string,
+    @GetClinicMembershipId() membershipId: string,
+    @GetClinicMembershipRole() role: ClinicMembershipRole,
+    @GetClinicPermissions() permissionsJson: Record<string, boolean>,
+  ) {
+    return this.appointmentService.findAll(
+      this.context(clinicId, membershipId, role, permissionsJson),
+    );
   }
 
   @Get(':id')
@@ -109,8 +130,17 @@ export class AppointmentsController {
   @ApiParam({ name: 'id', description: 'UUID de la cita' })
   @ApiResponse({ status: 200, description: 'Cita encontrada' })
   @ApiResponse({ status: 404, description: 'Cita no encontrada' })
-  findOne(@GetClinicId() clinicId: string, @Param('id') id: string) {
-    return this.appointmentService.findOne(clinicId, id);
+  findOne(
+    @GetClinicId() clinicId: string,
+    @GetClinicMembershipId() membershipId: string,
+    @GetClinicMembershipRole() role: ClinicMembershipRole,
+    @GetClinicPermissions() permissionsJson: Record<string, boolean>,
+    @Param('id') id: string,
+  ) {
+    return this.appointmentService.findOne(
+      this.context(clinicId, membershipId, role, permissionsJson),
+      id,
+    );
   }
 
   @Patch(':id')
@@ -119,17 +149,42 @@ export class AppointmentsController {
   @ApiResponse({ status: 200, description: 'Cita actualizada' })
   update(
     @GetClinicId() clinicId: string,
+    @GetClinicMembershipId() membershipId: string,
+    @GetClinicMembershipRole() role: ClinicMembershipRole,
+    @GetClinicPermissions() permissionsJson: Record<string, boolean>,
     @Param('id') id: string,
     @Body() updateAppointmentDto: UpdateAppointmentDto,
   ) {
-    return this.appointmentService.update(clinicId, id, updateAppointmentDto);
+    return this.appointmentService.update(
+      this.context(clinicId, membershipId, role, permissionsJson),
+      id,
+      updateAppointmentDto,
+    );
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Eliminar cita' })
   @ApiParam({ name: 'id', description: 'UUID de la cita' })
   @ApiResponse({ status: 200, description: 'Cita eliminada' })
-  remove(@GetClinicId() clinicId: string, @Param('id') id: string) {
-    return this.appointmentService.remove(clinicId, id);
+  remove(
+    @GetClinicId() clinicId: string,
+    @GetClinicMembershipId() membershipId: string,
+    @GetClinicMembershipRole() role: ClinicMembershipRole,
+    @GetClinicPermissions() permissionsJson: Record<string, boolean>,
+    @Param('id') id: string,
+  ) {
+    return this.appointmentService.remove(
+      this.context(clinicId, membershipId, role, permissionsJson),
+      id,
+    );
+  }
+
+  private context(
+    clinicId: string,
+    membershipId: string,
+    role: ClinicMembershipRole,
+    permissionsJson: Record<string, boolean> | undefined,
+  ): ClinicAccessContext {
+    return { clinicId, membershipId, role, permissionsJson };
   }
 }

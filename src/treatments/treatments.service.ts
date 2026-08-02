@@ -12,6 +12,11 @@ import { Patient } from '../patients/entities/patient.entity';
 import { CreateTreatmentDto } from './dto/create-treatment.dto';
 import { UpdateTreatmentDto } from './dto/update-treatment.dto';
 import { ClinicMembership } from '../clinic-memberships/entities/clinic-membership.entity';
+import { Invoice } from '../invoices/entities/invoice.entity';
+import {
+  ClinicAccessContext,
+  PatientAccessService,
+} from '../patients/services/patient-access.service';
 
 @Injectable()
 export class TreatmentsService {
@@ -24,15 +29,31 @@ export class TreatmentsService {
 
     @InjectRepository(ClinicMembership)
     private readonly clinicMembershipRepository: Repository<ClinicMembership>,
+
+    @InjectRepository(Invoice)
+    private readonly invoiceRepository: Repository<Invoice>,
+
+    private readonly patientAccessService: PatientAccessService,
   ) {}
 
-  async create(clinicId: string, dto: CreateTreatmentDto) {
-    await this.assertPatientInClinic(dto.patientId, clinicId);
-    await this.assertDoctorInClinic(dto.doctorId, clinicId);
+  async create(context: ClinicAccessContext, dto: CreateTreatmentDto) {
+    this.patientAccessService.assertCanManageClinical(context);
+    await this.patientAccessService.assertPatientAccessible(
+      context,
+      dto.patientId,
+    );
+    await this.assertDoctorInClinic(dto.doctorId, context.clinicId);
     if (dto.professionalMembershipId) {
       await this.assertMembershipInClinic(
         dto.professionalMembershipId,
-        clinicId,
+        context.clinicId,
+      );
+    }
+    if (dto.invoiceId) {
+      await this.assertInvoiceForPatient(
+        dto.invoiceId,
+        dto.patientId,
+        context.clinicId,
       );
     }
 
@@ -44,17 +65,31 @@ export class TreatmentsService {
     return await this.treatmentRepository.save(treatment);
   }
 
-  async findAll(clinicId: string) {
-    return await this.treatmentRepository
+  async findAll(context: ClinicAccessContext) {
+    const treatments = await this.treatmentRepository
       .createQueryBuilder('treatment')
       .innerJoinAndSelect('treatment.sessions', 'sessions')
       .innerJoin('patients', 'patient', 'patient.id = treatment.patientId')
-      .where('patient.clinicId = :clinicId', { clinicId })
+      .where('patient.clinicId = :clinicId', { clinicId: context.clinicId })
       .orderBy('treatment.id', 'DESC')
       .getMany();
+
+    const allowed: Treatment[] = [];
+    for (const treatment of treatments) {
+      try {
+        await this.patientAccessService.assertPatientAccessible(
+          context,
+          treatment.patientId,
+        );
+        allowed.push(treatment);
+      } catch (_) {
+        // Filter inaccessible patients out of collection results.
+      }
+    }
+    return allowed;
   }
 
-  async findOne(clinicId: string, id: string) {
+  async findOne(context: ClinicAccessContext, id: string) {
     if (!isUUID(id)) {
       throw new BadRequestException('Invalid treatment id');
     }
@@ -64,25 +99,40 @@ export class TreatmentsService {
       .leftJoinAndSelect('treatment.sessions', 'sessions')
       .innerJoin('patients', 'patient', 'patient.id = treatment.patientId')
       .where('treatment.id = :id', { id })
-      .andWhere('patient.clinicId = :clinicId', { clinicId })
+      .andWhere('patient.clinicId = :clinicId', {
+        clinicId: context.clinicId,
+      })
       .getOne();
 
     if (!treatment) {
       throw new NotFoundException(`Treatment with id ${id} not found`);
     }
 
+    await this.patientAccessService.assertPatientAccessible(
+      context,
+      treatment.patientId,
+    );
+
     return treatment;
   }
 
-  async update(clinicId: string, id: string, dto: UpdateTreatmentDto) {
-    const treatment = await this.findOne(clinicId, id);
+  async update(
+    context: ClinicAccessContext,
+    id: string,
+    dto: UpdateTreatmentDto,
+  ) {
+    this.patientAccessService.assertCanManageClinical(context);
+    const treatment = await this.findOne(context, id);
 
     if (dto.patientId && dto.patientId !== treatment.patientId) {
-      await this.assertPatientInClinic(dto.patientId, clinicId);
+      await this.patientAccessService.assertPatientAccessible(
+        context,
+        dto.patientId,
+      );
     }
 
     if (dto.doctorId && dto.doctorId !== treatment.doctorId) {
-      await this.assertDoctorInClinic(dto.doctorId, clinicId);
+      await this.assertDoctorInClinic(dto.doctorId, context.clinicId);
     }
 
     if (
@@ -91,7 +141,17 @@ export class TreatmentsService {
     ) {
       await this.assertMembershipInClinic(
         dto.professionalMembershipId,
-        clinicId,
+        context.clinicId,
+      );
+    }
+
+    const nextPatientId = dto.patientId ?? treatment.patientId;
+    const nextInvoiceId = dto.invoiceId ?? treatment.invoiceId;
+    if (nextInvoiceId) {
+      await this.assertInvoiceForPatient(
+        nextInvoiceId,
+        nextPatientId,
+        context.clinicId,
       );
     }
 
@@ -99,8 +159,9 @@ export class TreatmentsService {
     return await this.treatmentRepository.save(treatment);
   }
 
-  async remove(clinicId: string, id: string) {
-    const treatment = await this.findOne(clinicId, id);
+  async remove(context: ClinicAccessContext, id: string) {
+    this.patientAccessService.assertCanManageClinical(context);
+    const treatment = await this.findOne(context, id);
     treatment.isActive = false;
     await this.treatmentRepository.save(treatment);
     return { message: `Treatment ${id} archived` };
@@ -148,6 +209,23 @@ export class TreatmentsService {
     if (!membership) {
       throw new BadRequestException(
         `Membership ${membershipId} does not belong to the requested clinic`,
+      );
+    }
+  }
+
+  private async assertInvoiceForPatient(
+    invoiceId: string,
+    patientId: string,
+    clinicId: string,
+  ) {
+    const invoice = await this.invoiceRepository.findOne({
+      where: { id: invoiceId, patientId, clinicId },
+      select: { id: true },
+    });
+
+    if (!invoice) {
+      throw new BadRequestException(
+        'Invoice does not belong to patient and clinic scope',
       );
     }
   }

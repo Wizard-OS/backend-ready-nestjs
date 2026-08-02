@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { Patient } from '../patients/entities/patient.entity';
+import { PatientsModule } from '../patients/patients.module';
 import { Treatment } from '../treatments/entities/treatment.entity';
 import { ClinicalNote } from '../clinical-notes/entities/clinical-note.entity';
 import { OdontogramEntry } from './entities/odontogram-entry.entity';
@@ -12,6 +13,7 @@ import { OdontogramController } from './odontogram.controller';
   controllers: [OdontogramController],
   providers: [OdontogramService],
   imports: [
+    PatientsModule,
     TypeOrmModule.forFeature([
       OdontogramEntry,
       Patient,

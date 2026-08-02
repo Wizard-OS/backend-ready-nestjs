@@ -34,6 +34,7 @@ import { UserSessionsModule } from './user-sessions/user-sessions.module';
 import { ClinicalNotesModule } from './clinical-notes/clinical-notes.module';
 import { PaymentMethodsModule } from './payment-methods/payment-methods.module';
 import { ClinicalRecordsModule } from './clinical-records/clinical-records.module';
+import { PatientAssignmentsModule } from './patient-assignments/patient-assignments.module';
 import { MessageTemplatesModule } from './message-templates/message-templates.module';
 import { OutboundMessagesModule } from './outbound-messages/outbound-messages.module';
 import { TreatmentSessionsModule } from './treatment-sessions/treatment-sessions.module';
@@ -89,6 +90,7 @@ import { NotificationPreferencesModule } from './notification-preferences/notifi
     AuthModule,
     SeedModule,
     PatientsModule,
+    PatientAssignmentsModule,
     AppointmentsModule,
     InvoicesModule,
     PaymentsModule,

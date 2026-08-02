@@ -17,6 +17,10 @@ import { UpdateAppointmentDto } from './dto/update-appointment.dto';
 import { CreateAppointmentTypeDto } from './dto/create-appointment-type.dto';
 import { UpdateAppointmentTypeDto } from './dto/update-appointment-type.dto';
 import { AppointmentStatus } from './interfaces/AppointmentStatus.enum';
+import {
+  ClinicAccessContext,
+  PatientAccessService,
+} from '../patients/services/patient-access.service';
 
 @Injectable()
 export class AppointmentsService {
@@ -32,19 +36,34 @@ export class AppointmentsService {
 
     @InjectRepository(ClinicMembership)
     private readonly clinicMembershipRepository: Repository<ClinicMembership>,
+
+    private readonly patientAccessService: PatientAccessService,
   ) {}
 
-  async create(clinicId: string, dto: CreateAppointmentDto) {
-    this.ensureClinicScope(clinicId, dto.clinicId);
+  async create(context: ClinicAccessContext, dto: CreateAppointmentDto) {
+    if (!this.patientAccessService.canManagePatients(context)) {
+      this.patientAccessService.assertCanManageClinical(context);
+      await this.patientAccessService.assertPatientAccessible(
+        context,
+        dto.patientId,
+      );
+    }
+    this.ensureClinicScope(context.clinicId, dto.clinicId);
     this.validateTimeWindow(dto.startTime, dto.endTime);
 
-    await this.assertPatientInClinic(dto.patientId, clinicId);
-    await this.assertMembershipInClinic(dto.professionalMembershipId, clinicId);
-    await this.assertUserMembershipInClinic(dto.dentistId, clinicId);
-    await this.assertAppointmentTypeInClinic(dto.appointmentTypeId, clinicId);
+    await this.assertPatientInClinic(dto.patientId, context.clinicId);
+    await this.assertMembershipInClinic(
+      dto.professionalMembershipId,
+      context.clinicId,
+    );
+    await this.assertUserMembershipInClinic(dto.dentistId, context.clinicId);
+    await this.assertAppointmentTypeInClinic(
+      dto.appointmentTypeId,
+      context.clinicId,
+    );
 
     await this.assertNoOverlap(
-      clinicId,
+      context.clinicId,
       dto.startTime,
       dto.endTime,
       dto.professionalMembershipId,
@@ -54,7 +73,7 @@ export class AppointmentsService {
     try {
       const appointment = this.appointmentRepository.create({
         ...dto,
-        clinicId,
+        clinicId: context.clinicId,
         status: dto.status ?? AppointmentStatus.SCHEDULED,
       });
       return await this.appointmentRepository.save(appointment);
@@ -63,19 +82,42 @@ export class AppointmentsService {
     }
   }
 
-  async findAll(clinicId: string) {
-    return await this.appointmentRepository.find({
-      where: { clinicId },
-      relations: ['patient', 'appointmentType', 'professionalMembership'],
-      order: { startTime: 'ASC' },
-    });
+  async findAll(context: ClinicAccessContext) {
+    const query = this.appointmentRepository
+      .createQueryBuilder('appointment')
+      .leftJoinAndSelect('appointment.patient', 'patient')
+      .leftJoinAndSelect('appointment.appointmentType', 'appointmentType')
+      .leftJoinAndSelect(
+        'appointment.professionalMembership',
+        'professionalMembership',
+      )
+      .where('appointment.clinicId = :clinicId', {
+        clinicId: context.clinicId,
+      });
+
+    if (!this.patientAccessService.canViewAllPatients(context)) {
+      query.andWhere(
+        'appointment.professionalMembershipId = :professionalMembershipId',
+        { professionalMembershipId: context.membershipId },
+      );
+    }
+
+    const appointments = await query
+      .orderBy('appointment.startTime', 'ASC')
+      .getMany();
+    for (const appointment of appointments) {
+      if (appointment.patient) {
+        this.patientAccessService.sanitizePatient(appointment.patient, context);
+      }
+    }
+    return appointments;
   }
 
-  async findOne(clinicId: string, id: string) {
+  async findOne(context: ClinicAccessContext, id: string) {
     if (!isUUID(id)) throw new BadRequestException('Invalid appointment id');
 
     const appointment = await this.appointmentRepository.findOne({
-      where: { id, clinicId },
+      where: { id, clinicId: context.clinicId },
       relations: ['patient', 'appointmentType', 'professionalMembership'],
     });
 
@@ -83,33 +125,51 @@ export class AppointmentsService {
       throw new NotFoundException(`Appointment with id ${id} not found`);
     }
 
+    await this.patientAccessService.assertPatientAccessible(
+      context,
+      appointment.patientId,
+    );
+    if (appointment.patient) {
+      this.patientAccessService.sanitizePatient(appointment.patient, context);
+    }
+
     return appointment;
   }
 
-  async update(clinicId: string, id: string, dto: UpdateAppointmentDto) {
-    const appointment = await this.findOne(clinicId, id);
+  async update(
+    context: ClinicAccessContext,
+    id: string,
+    dto: UpdateAppointmentDto,
+  ) {
+    if (!this.patientAccessService.canManagePatients(context)) {
+      this.patientAccessService.assertCanManageClinical(context);
+    }
+    const appointment = await this.findOne(context, id);
 
     const nextStart = dto.startTime ?? appointment.startTime;
     const nextEnd = dto.endTime ?? appointment.endTime;
     this.validateTimeWindow(nextStart, nextEnd);
 
     if (dto.patientId)
-      await this.assertPatientInClinic(dto.patientId, clinicId);
+      await this.assertPatientInClinic(dto.patientId, context.clinicId);
     if (dto.professionalMembershipId !== undefined) {
       await this.assertMembershipInClinic(
         dto.professionalMembershipId,
-        clinicId,
+        context.clinicId,
       );
     }
     if (dto.dentistId !== undefined) {
-      await this.assertUserMembershipInClinic(dto.dentistId, clinicId);
+      await this.assertUserMembershipInClinic(dto.dentistId, context.clinicId);
     }
     if (dto.appointmentTypeId !== undefined) {
-      await this.assertAppointmentTypeInClinic(dto.appointmentTypeId, clinicId);
+      await this.assertAppointmentTypeInClinic(
+        dto.appointmentTypeId,
+        context.clinicId,
+      );
     }
 
     await this.assertNoOverlap(
-      clinicId,
+      context.clinicId,
       nextStart,
       nextEnd,
       dto.professionalMembershipId ??
@@ -128,8 +188,9 @@ export class AppointmentsService {
     }
   }
 
-  async remove(clinicId: string, id: string) {
-    const appointment = await this.findOne(clinicId, id);
+  async remove(context: ClinicAccessContext, id: string) {
+    this.patientAccessService.assertCanManagePatients(context);
+    const appointment = await this.findOne(context, id);
     await this.appointmentRepository.remove(appointment);
     return { message: `Appointment ${id} removed` };
   }

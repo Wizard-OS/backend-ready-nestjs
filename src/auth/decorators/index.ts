@@ -1,5 +1,6 @@
 export { Auth, AuthClinic } from './auth.decorator';
 export { ClinicRoles } from './clinic-roles.decorator';
+export { ClinicPermissions } from './clinic-permissions.decorator';
 export { RoleProtected } from './role-protected.decorator';
 
 export { GetUser } from './get-user.decorator';

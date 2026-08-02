@@ -2,6 +2,7 @@ import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
+import fs from 'fs';
 
 import { AppModule } from '../src/app.module';
 
@@ -9,8 +10,11 @@ describe('Phase 1 Flow (e2e)', () => {
   let app: INestApplication<App>;
   let adminToken: string;
   let adminUserId: string;
+  let doctorToken: string;
+  let doctorUserId: string;
   let clinicId: string;
   let membershipId: string;
+  let doctorMembershipId: string;
   let patientId: string;
   let patientDocumentId: string;
   let appointmentTypeId: string;
@@ -21,6 +25,7 @@ describe('Phase 1 Flow (e2e)', () => {
   let invoiceId: string;
   let paymentId: string;
   let patientFileId: string;
+  let patientFilePath: string;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -42,6 +47,17 @@ describe('Phase 1 Flow (e2e)', () => {
 
     adminToken = loginResponse.body.token;
     adminUserId = loginResponse.body.id;
+
+    const doctorLoginResponse = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({
+        email: 'test2@google.com',
+        password: 'Abc123',
+      })
+      .expect(201);
+
+    doctorToken = doctorLoginResponse.body.token;
+    doctorUserId = doctorLoginResponse.body.id;
   });
 
   afterAll(async () => {
@@ -82,6 +98,19 @@ describe('Phase 1 Flow (e2e)', () => {
 
     expect(ownerMembership).toBeDefined();
     membershipId = ownerMembership.id;
+
+    const doctorMembershipResponse = await request(app.getHttpServer())
+      .post('/clinic-memberships')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .set('x-clinic-id', clinicId)
+      .send({
+        clinicId,
+        userId: doctorUserId,
+        role: 'odontologist',
+      })
+      .expect(201);
+
+    doctorMembershipId = doctorMembershipResponse.body.id;
   });
 
   it('creates patient, appointment type and appointment in clinic scope', async () => {
@@ -150,6 +179,126 @@ describe('Phase 1 Flow (e2e)', () => {
       .expect(201);
 
     appointmentId = appointmentResponse.body.id;
+  });
+
+  it('restricts secondary professionals to assigned patients without contact data', async () => {
+    const hiddenPatientResponse = await request(app.getHttpServer())
+      .post('/patients/create')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .set('x-clinic-id', clinicId)
+      .send({
+        clinicId,
+        email: `hidden_patient_${Date.now()}@example.com`,
+        firstName: 'Paciente',
+        lastName: 'Oculto',
+        documentId: `UY-HIDDEN-${Date.now()}`,
+        birthDate: '1991-02-03',
+        gender: 'Other',
+        phone: `+5987${Date.now().toString().slice(-8)}`,
+        address: 'Dirección reservada',
+        emergencyContact: 'Contacto reservado',
+      })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post('/patient-assignments')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .set('x-clinic-id', clinicId)
+      .send({
+        patientId,
+        professionalMembershipId: doctorMembershipId,
+      })
+      .expect(201);
+
+    const doctorPatients = await request(app.getHttpServer())
+      .get('/patients')
+      .set('Authorization', `Bearer ${doctorToken}`)
+      .set('x-clinic-id', clinicId)
+      .expect(200);
+
+    expect(doctorPatients.body).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: patientId,
+          phone: null,
+          email: null,
+          address: null,
+          emergencyContact: null,
+        }),
+      ]),
+    );
+    expect(
+      doctorPatients.body.some(
+        (patient: { id: string }) =>
+          patient.id === hiddenPatientResponse.body.id,
+      ),
+    ).toBe(false);
+
+    await request(app.getHttpServer())
+      .get(`/patients/${hiddenPatientResponse.body.id}`)
+      .set('Authorization', `Bearer ${doctorToken}`)
+      .set('x-clinic-id', clinicId)
+      .expect(403);
+
+    await request(app.getHttpServer())
+      .get('/common/reports/income')
+      .set('Authorization', `Bearer ${doctorToken}`)
+      .set('x-clinic-id', clinicId)
+      .expect(403);
+  });
+
+  it('grants and removes temporary patient access through appointment assignment', async () => {
+    const temporaryPatient = await request(app.getHttpServer())
+      .post('/patients/create')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .set('x-clinic-id', clinicId)
+      .send({
+        clinicId,
+        email: `temporary_patient_${Date.now()}@example.com`,
+        firstName: 'Temporal',
+        lastName: 'Agenda',
+        documentId: `UY-TEMP-${Date.now()}`,
+        birthDate: '1995-05-05',
+        gender: 'Other',
+      })
+      .expect(201);
+
+    const startAt = new Date(Date.now() + 2 * 3600 * 1000);
+    const endAt = new Date(startAt.getTime() + 30 * 60000);
+
+    const temporaryAppointment = await request(app.getHttpServer())
+      .post('/appointments')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .set('x-clinic-id', clinicId)
+      .send({
+        clinicId,
+        patientId: temporaryPatient.body.id,
+        appointmentTypeId,
+        professionalMembershipId: doctorMembershipId,
+        description: 'Acceso temporal',
+        startTime: startAt.toISOString(),
+        endTime: endAt.toISOString(),
+      })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .get(`/patients/${temporaryPatient.body.id}`)
+      .set('Authorization', `Bearer ${doctorToken}`)
+      .set('x-clinic-id', clinicId)
+      .expect(200);
+
+    await request(app.getHttpServer())
+      .patch(`/appointments/${temporaryAppointment.body.id}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .set('x-clinic-id', clinicId)
+      .send({ status: 3 })
+      .expect(200);
+
+    await request(app.getHttpServer())
+      .get(`/patients/${temporaryPatient.body.id}`)
+      .set('Authorization', `Bearer ${doctorToken}`)
+      .set('x-clinic-id', clinicId)
+      .expect(403);
   });
 
   it('documents clinical evolution, odontogram and treatment plan', async () => {
@@ -290,6 +439,97 @@ describe('Phase 1 Flow (e2e)', () => {
     expect(invoiceAfterPayment.body.status).toBe('partially_paid');
   });
 
+  it('rejects mismatched commercial document relations', async () => {
+    const otherPatient = await request(app.getHttpServer())
+      .post('/patients/create')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .set('x-clinic-id', clinicId)
+      .send({
+        clinicId,
+        email: `other_patient_${Date.now()}@example.com`,
+        firstName: 'Bruno',
+        lastName: 'Silva',
+        documentId: `UY-OTHER-${Date.now()}`,
+        birthDate: '1984-04-12',
+        gender: 'Male',
+        phone: `+5988${Date.now().toString().slice(-8)}`,
+      })
+      .expect(201);
+
+    const otherTreatment = await request(app.getHttpServer())
+      .post('/treatments')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .set('x-clinic-id', clinicId)
+      .send({
+        name: 'Limpieza otro paciente',
+        patientId: otherPatient.body.id,
+        doctorId: adminUserId,
+        professionalMembershipId: membershipId,
+        description: 'Tratamiento de control',
+        basePrice: '80.00',
+        status: 'accepted',
+      })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post('/invoices')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .set('x-clinic-id', clinicId)
+      .send({
+        clinicId,
+        patientId,
+        number: `INV-BAD-${Date.now()}`,
+        treatmentId: otherTreatment.body.id,
+        subtotal: '80.00',
+        discount: '0.00',
+        tax: '0.00',
+        totalAmount: '80.00',
+      })
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .post('/treatments')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .set('x-clinic-id', clinicId)
+      .send({
+        name: 'Tratamiento con factura ajena',
+        patientId: otherPatient.body.id,
+        doctorId: adminUserId,
+        professionalMembershipId: membershipId,
+        description: 'Debe fallar por invoiceId',
+        basePrice: '90.00',
+        status: 'accepted',
+        invoiceId,
+      })
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .post('/payments')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .set('x-clinic-id', clinicId)
+      .send({
+        invoiceId,
+        patientId: otherPatient.body.id,
+        amount: '1.00',
+        method: 'cash',
+        paidAt: new Date().toISOString(),
+      })
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .post('/payments')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .set('x-clinic-id', clinicId)
+      .send({
+        invoiceId,
+        treatmentId: otherTreatment.body.id,
+        amount: '1.00',
+        method: 'cash',
+        paidAt: new Date().toISOString(),
+      })
+      .expect(400);
+  });
+
   it('voids payments without deleting and registers another manual payment', async () => {
     const voidedPayment = await request(app.getHttpServer())
       .patch(`/payments/${paymentId}/void`)
@@ -342,8 +582,10 @@ describe('Phase 1 Flow (e2e)', () => {
       .expect(201);
 
     patientFileId = uploadResponse.body.id;
+    patientFilePath = uploadResponse.body.path;
     expect(uploadResponse.body.patientId).toBe(patientId);
     expect(uploadResponse.body.url).toContain('/uploads/patient-files/');
+    expect(fs.existsSync(patientFilePath)).toBe(true);
 
     const filesResponse = await request(app.getHttpServer())
       .get(`/patients/${patientId}/files`)
@@ -359,6 +601,20 @@ describe('Phase 1 Flow (e2e)', () => {
         }),
       ]),
     );
+
+    await request(app.getHttpServer())
+      .delete(`/patient-files/${patientFileId}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .set('x-clinic-id', clinicId)
+      .expect(200);
+
+    expect(fs.existsSync(patientFilePath)).toBe(false);
+
+    await request(app.getHttpServer())
+      .get(`/patient-files/${patientFileId}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .set('x-clinic-id', clinicId)
+      .expect(404);
   });
 
   it('returns minimum phase 1 reports', async () => {

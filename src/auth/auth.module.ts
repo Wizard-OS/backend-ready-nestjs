@@ -12,6 +12,7 @@ import { ClinicMembership } from '../clinic-memberships/entities/clinic-membersh
 import { ClinicScopeGuard } from './guards/clinic-scope.guard';
 import { UserRoleGuard } from './guards/user-role.guard';
 import { ClinicRoleGuard } from './guards/clinic-role.guard';
+import { ClinicPermissionGuard } from './guards/clinic-permission.guard';
 
 @Global()
 @Module({
@@ -22,6 +23,7 @@ import { ClinicRoleGuard } from './guards/clinic-role.guard';
     ClinicScopeGuard,
     UserRoleGuard,
     ClinicRoleGuard,
+    ClinicPermissionGuard,
   ],
   imports: [
     ConfigModule,
@@ -59,6 +61,7 @@ import { ClinicRoleGuard } from './guards/clinic-role.guard';
     ClinicScopeGuard,
     UserRoleGuard,
     ClinicRoleGuard,
+    ClinicPermissionGuard,
   ],
 })
 export class AuthModule {}

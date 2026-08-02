@@ -11,6 +11,10 @@ import { ClinicalNote } from './entities/clinical-note.entity';
 import { ClinicalRecord } from '../clinical-records/entities/clinical-record.entity';
 import { CreateClinicalNoteDto } from './dto/create-clinical-note.dto';
 import { UpdateClinicalNoteDto } from './dto/update-clinical-note.dto';
+import {
+  ClinicAccessContext,
+  PatientAccessService,
+} from '../patients/services/patient-access.service';
 
 @Injectable()
 export class ClinicalNotesService {
@@ -20,15 +24,25 @@ export class ClinicalNotesService {
 
     @InjectRepository(ClinicalRecord)
     private readonly clinicalRecordRepository: Repository<ClinicalRecord>,
+
+    private readonly patientAccessService: PatientAccessService,
   ) {}
 
   async create(
-    clinicId: string,
+    context: ClinicAccessContext,
     authorId: string,
     authorMembershipId: string,
     dto: CreateClinicalNoteDto,
   ) {
-    await this.assertRecordInClinic(dto.clinicalRecordId, clinicId);
+    this.patientAccessService.assertCanManageClinical(context);
+    const record = await this.assertRecordInClinic(
+      dto.clinicalRecordId,
+      context.clinicId,
+    );
+    await this.patientAccessService.assertPatientAccessible(
+      context,
+      record.patientId,
+    );
 
     const note = this.clinicalNoteRepository.create({
       ...dto,
@@ -39,18 +53,36 @@ export class ClinicalNotesService {
     return await this.clinicalNoteRepository.save(note);
   }
 
-  async findAll(clinicId: string) {
-    return await this.clinicalNoteRepository
+  async findAll(context: ClinicAccessContext) {
+    const notes = await this.clinicalNoteRepository
       .createQueryBuilder('note')
       .innerJoinAndSelect('note.clinicalRecord', 'record')
       .innerJoinAndSelect('record.patient', 'patient')
       .leftJoinAndSelect('note.author', 'author')
-      .where('patient.clinicId = :clinicId', { clinicId })
+      .where('patient.clinicId = :clinicId', { clinicId: context.clinicId })
       .orderBy('note.createdAt', 'DESC')
       .getMany();
+
+    const allowed: ClinicalNote[] = [];
+    for (const note of notes) {
+      try {
+        await this.patientAccessService.assertPatientAccessible(
+          context,
+          note.clinicalRecord.patientId,
+        );
+        this.patientAccessService.sanitizePatient(
+          note.clinicalRecord.patient,
+          context,
+        );
+        allowed.push(note);
+      } catch (_) {
+        // Filter inaccessible patients out of collection results.
+      }
+    }
+    return allowed;
   }
 
-  async findOne(clinicId: string, id: string) {
+  async findOne(context: ClinicAccessContext, id: string) {
     if (!isUUID(id)) {
       throw new BadRequestException('Invalid clinical note id');
     }
@@ -61,32 +93,56 @@ export class ClinicalNotesService {
       .innerJoinAndSelect('record.patient', 'patient')
       .leftJoinAndSelect('note.author', 'author')
       .where('note.id = :id', { id })
-      .andWhere('patient.clinicId = :clinicId', { clinicId })
+      .andWhere('patient.clinicId = :clinicId', {
+        clinicId: context.clinicId,
+      })
       .getOne();
 
     if (!note) {
       throw new NotFoundException(`Clinical note with id ${id} not found`);
     }
 
+    await this.patientAccessService.assertPatientAccessible(
+      context,
+      note.clinicalRecord.patientId,
+    );
+    this.patientAccessService.sanitizePatient(
+      note.clinicalRecord.patient,
+      context,
+    );
+
     return note;
   }
 
-  async update(clinicId: string, id: string, dto: UpdateClinicalNoteDto) {
-    const note = await this.findOne(clinicId, id);
+  async update(
+    context: ClinicAccessContext,
+    id: string,
+    dto: UpdateClinicalNoteDto,
+  ) {
+    this.patientAccessService.assertCanManageClinical(context);
+    const note = await this.findOne(context, id);
 
     if (
       dto.clinicalRecordId &&
       dto.clinicalRecordId !== note.clinicalRecordId
     ) {
-      await this.assertRecordInClinic(dto.clinicalRecordId, clinicId);
+      const record = await this.assertRecordInClinic(
+        dto.clinicalRecordId,
+        context.clinicId,
+      );
+      await this.patientAccessService.assertPatientAccessible(
+        context,
+        record.patientId,
+      );
     }
 
     Object.assign(note, dto);
     return await this.clinicalNoteRepository.save(note);
   }
 
-  async remove(clinicId: string, id: string) {
-    const note = await this.findOne(clinicId, id);
+  async remove(context: ClinicAccessContext, id: string) {
+    this.patientAccessService.assertCanManageClinical(context);
+    const note = await this.findOne(context, id);
     await this.clinicalNoteRepository.remove(note);
     return { message: `Clinical note ${id} removed` };
   }
@@ -94,7 +150,7 @@ export class ClinicalNotesService {
   private async assertRecordInClinic(
     clinicalRecordId: string,
     clinicId: string,
-  ) {
+  ): Promise<ClinicalRecord> {
     const record = await this.clinicalRecordRepository
       .createQueryBuilder('record')
       .innerJoin('record.patient', 'patient')
@@ -107,5 +163,7 @@ export class ClinicalNotesService {
         'Clinical record does not belong to the requested clinic',
       );
     }
+
+    return record;
   }
 }

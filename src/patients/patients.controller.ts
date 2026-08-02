@@ -22,8 +22,16 @@ import { PatientsService } from './patients.service';
 import { CreatePatientDto } from './dto/create-patient.dto';
 import { UpdatePatientDto } from './dto/update-patient.dto';
 import { PaginationDto } from '../common/dtos/pagination.dto';
-import { AuthClinic, ClinicRoles, GetClinicId } from '../auth/decorators';
+import {
+  AuthClinic,
+  ClinicRoles,
+  GetClinicId,
+  GetClinicMembershipId,
+  GetClinicMembershipRole,
+  GetClinicPermissions,
+} from '../auth/decorators';
 import { ClinicMembershipRole } from '../clinic-memberships/interfaces/clinic-membership-role.enum';
+import { ClinicAccessContext } from './services/patient-access.service';
 
 @ApiTags('Patients')
 @ApiBearerAuth()
@@ -45,9 +53,15 @@ export class PatientsController {
   @ApiResponse({ status: 201, description: 'Paciente creado' })
   create(
     @GetClinicId() clinicId: string,
+    @GetClinicMembershipId() membershipId: string,
+    @GetClinicMembershipRole() role: ClinicMembershipRole,
+    @GetClinicPermissions() permissionsJson: Record<string, boolean>,
     @Body() createPatientDto: CreatePatientDto,
   ) {
-    return this.patientService.create(clinicId, createPatientDto);
+    return this.patientService.create(
+      this.context(clinicId, membershipId, role, permissionsJson),
+      createPatientDto,
+    );
   }
 
   @Get()
@@ -55,9 +69,15 @@ export class PatientsController {
   @ApiResponse({ status: 200, description: 'Lista de pacientes' })
   findAll(
     @GetClinicId() clinicId: string,
+    @GetClinicMembershipId() membershipId: string,
+    @GetClinicMembershipRole() role: ClinicMembershipRole,
+    @GetClinicPermissions() permissionsJson: Record<string, boolean>,
     @Query() paginationDto: PaginationDto,
   ) {
-    return this.patientService.findAll(clinicId, paginationDto);
+    return this.patientService.findAll(
+      this.context(clinicId, membershipId, role, permissionsJson),
+      paginationDto,
+    );
   }
 
   @Get(':term')
@@ -65,8 +85,17 @@ export class PatientsController {
   @ApiParam({ name: 'term', description: 'UUID o término de búsqueda' })
   @ApiResponse({ status: 200, description: 'Paciente encontrado' })
   @ApiResponse({ status: 404, description: 'Paciente no encontrado' })
-  findOne(@GetClinicId() clinicId: string, @Param('term') term: string) {
-    return this.patientService.findOnePlain(clinicId, term);
+  findOne(
+    @GetClinicId() clinicId: string,
+    @GetClinicMembershipId() membershipId: string,
+    @GetClinicMembershipRole() role: ClinicMembershipRole,
+    @GetClinicPermissions() permissionsJson: Record<string, boolean>,
+    @Param('term') term: string,
+  ) {
+    return this.patientService.findOnePlain(
+      this.context(clinicId, membershipId, role, permissionsJson),
+      term,
+    );
   }
 
   @Patch(':id')
@@ -75,17 +104,42 @@ export class PatientsController {
   @ApiResponse({ status: 200, description: 'Paciente actualizado' })
   update(
     @GetClinicId() clinicId: string,
+    @GetClinicMembershipId() membershipId: string,
+    @GetClinicMembershipRole() role: ClinicMembershipRole,
+    @GetClinicPermissions() permissionsJson: Record<string, boolean>,
     @Param('id') id: string,
     @Body() updatePatientDto: UpdatePatientDto,
   ) {
-    return this.patientService.update(clinicId, id, updatePatientDto);
+    return this.patientService.update(
+      this.context(clinicId, membershipId, role, permissionsJson),
+      id,
+      updatePatientDto,
+    );
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Eliminar paciente' })
   @ApiParam({ name: 'id', description: 'UUID del paciente' })
   @ApiResponse({ status: 200, description: 'Paciente eliminado' })
-  remove(@GetClinicId() clinicId: string, @Param('id') id: string) {
-    return this.patientService.remove(clinicId, id);
+  remove(
+    @GetClinicId() clinicId: string,
+    @GetClinicMembershipId() membershipId: string,
+    @GetClinicMembershipRole() role: ClinicMembershipRole,
+    @GetClinicPermissions() permissionsJson: Record<string, boolean>,
+    @Param('id') id: string,
+  ) {
+    return this.patientService.remove(
+      this.context(clinicId, membershipId, role, permissionsJson),
+      id,
+    );
+  }
+
+  private context(
+    clinicId: string,
+    membershipId: string,
+    role: ClinicMembershipRole,
+    permissionsJson: Record<string, boolean> | undefined,
+  ): ClinicAccessContext {
+    return { clinicId, membershipId, role, permissionsJson };
   }
 }

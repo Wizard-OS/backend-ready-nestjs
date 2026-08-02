@@ -5,6 +5,7 @@ import { Appointment } from './entities/appointment.entity';
 import { AppointmentType } from './entities/appointment-type.entity';
 import { Patient } from '../patients/entities/patient.entity';
 import { ClinicMembership } from '../clinic-memberships/entities/clinic-membership.entity';
+import { PatientsModule } from '../patients/patients.module';
 import { AppointmentsService } from './appointments.service';
 import { AppointmentsController } from './appointments.controller';
 
@@ -12,6 +13,7 @@ import { AppointmentsController } from './appointments.controller';
   controllers: [AppointmentsController],
   providers: [AppointmentsService],
   imports: [
+    PatientsModule,
     TypeOrmModule.forFeature([
       Appointment,
       AppointmentType,

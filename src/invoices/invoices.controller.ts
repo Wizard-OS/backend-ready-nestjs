@@ -20,7 +20,13 @@ import { InvoicesService } from './invoices.service';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { UpdateInvoiceDto } from './dto/update-invoice.dto';
 import { CreateInvoiceItemDto } from './dto/create-invoice-item.dto';
-import { AuthClinic, ClinicRoles, GetClinicId } from '../auth/decorators';
+import {
+  AuthClinic,
+  ClinicPermissions,
+  ClinicRoles,
+  GetClinicId,
+} from '../auth/decorators';
+import { ClinicPermission } from '../auth/interfaces';
 import { ClinicMembershipRole } from '../clinic-memberships/interfaces/clinic-membership-role.enum';
 
 @ApiTags('Invoices')
@@ -33,6 +39,7 @@ import { ClinicMembershipRole } from '../clinic-memberships/interfaces/clinic-me
   ClinicMembershipRole.admin,
   ClinicMembershipRole.receptionist,
 )
+@ClinicPermissions(ClinicPermission.manageFinancial)
 export class InvoicesController {
   constructor(private readonly invoiceService: InvoicesService) {}
 
