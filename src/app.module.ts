@@ -40,6 +40,7 @@ import { OutboundMessagesModule } from './outbound-messages/outbound-messages.mo
 import { TreatmentSessionsModule } from './treatment-sessions/treatment-sessions.module';
 import { ClinicMembershipsModule } from './clinic-memberships/clinic-memberships.module';
 import { NotificationPreferencesModule } from './notification-preferences/notification-preferences.module';
+import { MembershipModule } from './membership/membership.module';
 
 @Module({
   imports: [
@@ -86,6 +87,7 @@ import { NotificationPreferencesModule } from './notification-preferences/notifi
 
     CommonModule,
     ClinicsModule,
+    MembershipModule,
     ClinicMembershipsModule,
     AuthModule,
     SeedModule,

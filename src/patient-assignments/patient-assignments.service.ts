@@ -151,6 +151,7 @@ export class PatientAssignmentsService {
     if (
       ![
         ClinicMembershipRole.odontologist,
+        ClinicMembershipRole.specialist,
         ClinicMembershipRole.assistant,
       ].includes(membership.role)
     ) {

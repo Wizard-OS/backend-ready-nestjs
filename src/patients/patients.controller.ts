@@ -21,7 +21,7 @@ import { PatientsService } from './patients.service';
 
 import { CreatePatientDto } from './dto/create-patient.dto';
 import { UpdatePatientDto } from './dto/update-patient.dto';
-import { PaginationDto } from '../common/dtos/pagination.dto';
+import { QueryPatientsDto } from './dto/query-patients.dto';
 import {
   AuthClinic,
   ClinicRoles,
@@ -42,6 +42,7 @@ import { ClinicAccessContext } from './services/patient-access.service';
   ClinicMembershipRole.owner,
   ClinicMembershipRole.admin,
   ClinicMembershipRole.odontologist,
+  ClinicMembershipRole.specialist,
   ClinicMembershipRole.receptionist,
   ClinicMembershipRole.assistant,
 )
@@ -72,7 +73,7 @@ export class PatientsController {
     @GetClinicMembershipId() membershipId: string,
     @GetClinicMembershipRole() role: ClinicMembershipRole,
     @GetClinicPermissions() permissionsJson: Record<string, boolean>,
-    @Query() paginationDto: PaginationDto,
+    @Query() paginationDto: QueryPatientsDto,
   ) {
     return this.patientService.findAll(
       this.context(clinicId, membershipId, role, permissionsJson),
@@ -118,9 +119,9 @@ export class PatientsController {
   }
 
   @Delete(':id')
-  @ApiOperation({ summary: 'Eliminar paciente' })
+  @ApiOperation({ summary: 'Archivar paciente' })
   @ApiParam({ name: 'id', description: 'UUID del paciente' })
-  @ApiResponse({ status: 200, description: 'Paciente eliminado' })
+  @ApiResponse({ status: 200, description: 'Paciente archivado' })
   remove(
     @GetClinicId() clinicId: string,
     @GetClinicMembershipId() membershipId: string,
@@ -129,6 +130,23 @@ export class PatientsController {
     @Param('id') id: string,
   ) {
     return this.patientService.remove(
+      this.context(clinicId, membershipId, role, permissionsJson),
+      id,
+    );
+  }
+
+  @Patch(':id/reactivate')
+  @ApiOperation({ summary: 'Reactivar paciente archivado' })
+  @ApiParam({ name: 'id', description: 'UUID del paciente' })
+  @ApiResponse({ status: 200, description: 'Paciente reactivado' })
+  reactivate(
+    @GetClinicId() clinicId: string,
+    @GetClinicMembershipId() membershipId: string,
+    @GetClinicMembershipRole() role: ClinicMembershipRole,
+    @GetClinicPermissions() permissionsJson: Record<string, boolean>,
+    @Param('id') id: string,
+  ) {
+    return this.patientService.reactivate(
       this.context(clinicId, membershipId, role, permissionsJson),
       id,
     );

@@ -169,6 +169,16 @@ describe('Multi-tenant clinic scope (e2e)', () => {
 
   it('creates memberships only for owner/admin and blocks receptionist management', async () => {
     await request(app.getHttpServer())
+      .patch('/membership/manual')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .set('x-clinic-id', clinicMainId)
+      .send({
+        planCode: 'premium',
+        reason: 'Allow receptionist membership in multitenancy regression',
+      })
+      .expect(200);
+
+    await request(app.getHttpServer())
       .post('/clinic-memberships')
       .set('Authorization', `Bearer ${adminToken}`)
       .set('x-clinic-id', clinicMainId)

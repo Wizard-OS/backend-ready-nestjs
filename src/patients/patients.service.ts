@@ -12,7 +12,7 @@ import { isUUID } from 'class-validator';
 import { Patient } from './entities/patient.entity';
 import { CreatePatientDto } from './dto/create-patient.dto';
 import { UpdatePatientDto } from './dto/update-patient.dto';
-import { PaginationDto } from '../common/dtos/pagination.dto';
+import { QueryPatientsDto } from './dto/query-patients.dto';
 import {
   ClinicAccessContext,
   PatientAccessService,
@@ -53,15 +53,24 @@ export class PatientsService {
     }
   }
 
-  async findAll(context: ClinicAccessContext, paginationDto: PaginationDto) {
+  async findAll(context: ClinicAccessContext, paginationDto: QueryPatientsDto) {
     const { limit = 10, offset = 0 } = paginationDto;
+    const includeArchived =
+      'includeArchived' in paginationDto &&
+      paginationDto.includeArchived === 'true';
+
+    if (includeArchived) {
+      this.patientAccessService.assertCanManagePatients(context);
+    }
+
+    const query = this.patientRepository.createQueryBuilder('patient');
+
+    if (includeArchived) {
+      query.withDeleted();
+    }
 
     const patients = await this.patientAccessService
-      .applyPatientAccessFilter(
-        this.patientRepository.createQueryBuilder('patient'),
-        'patient',
-        context,
-      )
+      .applyPatientAccessFilter(query, 'patient', context)
       .skip(offset)
       .take(limit)
       .getMany();
@@ -154,7 +163,29 @@ export class PatientsService {
   async remove(context: ClinicAccessContext, id: string) {
     this.patientAccessService.assertCanManagePatients(context);
     const patient = await this.findOne(context, id);
-    return await this.patientRepository.remove(patient);
+    await this.patientRepository.softRemove(patient);
+    return { message: `Patient ${id} archived` };
+  }
+
+  async reactivate(context: ClinicAccessContext, id: string) {
+    this.patientAccessService.assertCanManagePatients(context);
+
+    const patient = await this.patientRepository.findOne({
+      where: { id, clinicId: context.clinicId },
+      withDeleted: true,
+    });
+
+    if (!patient) {
+      throw new NotFoundException(`Patient with id "${id}" not found`);
+    }
+
+    if (!patient.deletedAt) {
+      return this.patientAccessService.sanitizePatient(patient, context);
+    }
+
+    patient.deletedAt = null;
+    const saved = await this.patientRepository.save(patient);
+    return this.patientAccessService.sanitizePatient(saved, context);
   }
 
   private handleDBErrors(error: unknown): never {

@@ -12,12 +12,15 @@ import { ClinicMembership } from './entities/clinic-membership.entity';
 import { CreateClinicMembershipDto } from './dto/create-clinic-membership.dto';
 import { UpdateClinicMembershipDto } from './dto/update-clinic-membership.dto';
 import { ClinicMembershipRole } from './interfaces/clinic-membership-role.enum';
+import { MembershipService } from '../membership/membership.service';
 
 @Injectable()
 export class ClinicMembershipsService {
   constructor(
     @InjectRepository(ClinicMembership)
     private readonly clinicMembershipRepository: Repository<ClinicMembership>,
+
+    private readonly membershipService: MembershipService,
   ) {}
 
   async create(
@@ -25,6 +28,11 @@ export class ClinicMembershipsService {
     createClinicMembershipDto: CreateClinicMembershipDto,
   ) {
     this.ensureClinicScope(clinicId, createClinicMembershipDto.clinicId);
+
+    await this.membershipService.assertCanCreateMembership(
+      clinicId,
+      createClinicMembershipDto.role,
+    );
 
     try {
       const membership = this.clinicMembershipRepository.create(
@@ -91,6 +99,18 @@ export class ClinicMembershipsService {
       await this.assertAnotherActiveOwnerExists(clinicId, id);
     }
 
+    if (
+      updateClinicMembershipDto.isActive !== false &&
+      updateClinicMembershipDto.role &&
+      updateClinicMembershipDto.role !== membership.role
+    ) {
+      await this.assertRoleChangeWithinLimits(
+        clinicId,
+        membership,
+        updateClinicMembershipDto.role,
+      );
+    }
+
     Object.assign(membership, updateClinicMembershipDto);
 
     try {
@@ -135,6 +155,24 @@ export class ClinicMembershipsService {
       throw new BadRequestException(
         'Clinic must keep at least one active owner',
       );
+    }
+  }
+
+  private async assertRoleChangeWithinLimits(
+    clinicId: string,
+    membership: ClinicMembership,
+    nextRole: ClinicMembershipRole,
+  ) {
+    if (!membership.isActive) return;
+
+    const currentlyProfessional = this.membershipService.isProfessionalRole(
+      membership.role,
+    );
+    const nextProfessional =
+      this.membershipService.isProfessionalRole(nextRole);
+
+    if (!currentlyProfessional && nextProfessional) {
+      await this.membershipService.assertCanAddProfessional(clinicId);
     }
   }
 

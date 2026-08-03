@@ -41,6 +41,7 @@ import { ClinicAccessContext } from '../patients/services/patient-access.service
   ClinicMembershipRole.owner,
   ClinicMembershipRole.admin,
   ClinicMembershipRole.odontologist,
+  ClinicMembershipRole.specialist,
   ClinicMembershipRole.receptionist,
   ClinicMembershipRole.assistant,
 )

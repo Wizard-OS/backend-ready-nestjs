@@ -58,6 +58,7 @@ const ALLOWED_MIME_TYPES = new Set([
   ClinicMembershipRole.owner,
   ClinicMembershipRole.admin,
   ClinicMembershipRole.odontologist,
+  ClinicMembershipRole.specialist,
   ClinicMembershipRole.receptionist,
   ClinicMembershipRole.assistant,
 )

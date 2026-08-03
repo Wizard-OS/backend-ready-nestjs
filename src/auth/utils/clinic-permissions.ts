@@ -41,6 +41,16 @@ const defaultPermissionsByRole: Record<
     [ClinicPermission.manageFinancial]: false,
     [ClinicPermission.viewReports]: false,
   },
+  [ClinicMembershipRole.specialist]: {
+    [ClinicPermission.manageClinic]: false,
+    [ClinicPermission.manageTeam]: false,
+    [ClinicPermission.managePatients]: false,
+    [ClinicPermission.viewPatientContact]: false,
+    [ClinicPermission.manageSchedule]: false,
+    [ClinicPermission.manageClinical]: true,
+    [ClinicPermission.manageFinancial]: false,
+    [ClinicPermission.viewReports]: false,
+  },
   [ClinicMembershipRole.assistant]: {
     [ClinicPermission.manageClinic]: false,
     [ClinicPermission.manageTeam]: false,
@@ -62,6 +72,7 @@ export function isPrimaryClinicRole(role?: ClinicMembershipRole): boolean {
 export function isSecondaryClinicRole(role?: ClinicMembershipRole): boolean {
   return (
     role === ClinicMembershipRole.odontologist ||
+    role === ClinicMembershipRole.specialist ||
     role === ClinicMembershipRole.assistant
   );
 }

@@ -21,6 +21,7 @@ import {
   ClinicAccessContext,
   PatientAccessService,
 } from '../patients/services/patient-access.service';
+import { MembershipService } from '../membership/membership.service';
 
 @Injectable()
 export class PatientFilesService {
@@ -41,6 +42,8 @@ export class PatientFilesService {
     private readonly treatmentRepository: Repository<Treatment>,
 
     private readonly patientAccessService: PatientAccessService,
+
+    private readonly membershipService: MembershipService,
   ) {}
 
   async create(
@@ -57,6 +60,16 @@ export class PatientFilesService {
 
     this.patientAccessService.assertCanManageClinical(context);
     await this.patientAccessService.assertPatientAccessible(context, patientId);
+
+    try {
+      await this.membershipService.assertCanStoreFile(
+        context.clinicId,
+        file.size,
+      );
+    } catch (error) {
+      await fs.unlink(file.path).catch(() => undefined);
+      throw error;
+    }
 
     if (dto.appointmentId) {
       await this.assertAppointmentForPatient(

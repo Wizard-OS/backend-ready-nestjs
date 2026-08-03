@@ -39,6 +39,7 @@ import { ClinicAccessContext } from '../patients/services/patient-access.service
   ClinicMembershipRole.owner,
   ClinicMembershipRole.admin,
   ClinicMembershipRole.odontologist,
+  ClinicMembershipRole.specialist,
 )
 export class TreatmentsController {
   constructor(private readonly treatmentsService: TreatmentsService) {}

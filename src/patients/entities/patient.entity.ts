@@ -111,7 +111,7 @@ export class Patient {
   updatedAt: Date;
 
   @DeleteDateColumn()
-  deletedAt?: Date;
+  deletedAt?: Date | null;
 
   @BeforeInsert()
   checkFieldsBeforeInsert() {
