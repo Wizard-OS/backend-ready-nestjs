@@ -49,6 +49,7 @@ const REQUIRED_VARIABLES = [
   ['outboundMessageId', ''],
   ['paymentMethodId', ''],
   ['patientFileId', ''],
+  ['patientAssignmentId', ''],
   ['userSessionId', ''],
   ['supportRequestId', ''],
 ];
@@ -522,7 +523,9 @@ function variableForPathParam(paramName, pathName) {
     'payment-methods': 'paymentMethodId',
     'user-sessions': 'userSessionId',
     'patient-files': 'patientFileId',
+    'patient-assignments': 'patientAssignmentId',
     'support-requests': 'supportRequestId',
+    users: 'currentUserId',
   };
 
   return bySegment[previous] ?? `${camelCase(previous ?? 'resource')}Id`;

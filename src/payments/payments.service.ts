@@ -13,6 +13,7 @@ import { CreatePaymentDto } from './dto/create-payment.dto';
 import { UpdatePaymentDto } from './dto/update-payment.dto';
 import { VoidPaymentDto } from './dto/void-payment.dto';
 import { InvoiceStatus } from '../invoices/InvoiceStatus/InvoiceStatus.enum';
+import { Treatment } from '../treatments/entities/treatment.entity';
 
 @Injectable()
 export class PaymentsService {
@@ -22,6 +23,9 @@ export class PaymentsService {
 
     @InjectRepository(Invoice)
     private readonly invoiceRepository: Repository<Invoice>,
+
+    @InjectRepository(Treatment)
+    private readonly treatmentRepository: Repository<Treatment>,
   ) {}
 
   async create(clinicId: string, dto: CreatePaymentDto) {
@@ -29,6 +33,15 @@ export class PaymentsService {
 
     const paidAmount = await this.getPaidAmount(invoice.id);
     const nextPaidAmount = paidAmount + Number(dto.amount);
+    const patientId = dto.patientId ?? invoice.patientId;
+    const treatmentId = dto.treatmentId ?? invoice.treatmentId ?? null;
+
+    await this.assertPaymentRelationsInScope(
+      invoice,
+      clinicId,
+      patientId,
+      treatmentId,
+    );
 
     if (nextPaidAmount > Number(invoice.totalAmount)) {
       throw new BadRequestException(
@@ -38,8 +51,8 @@ export class PaymentsService {
 
     const payment = this.paymentRepository.create({
       ...dto,
-      patientId: dto.patientId ?? invoice.patientId,
-      treatmentId: dto.treatmentId ?? invoice.treatmentId ?? null,
+      patientId,
+      treatmentId,
       voidedAt: null,
       voidReason: null,
     });
@@ -82,10 +95,28 @@ export class PaymentsService {
       throw new BadRequestException('Voided payments cannot be updated');
     }
 
-    const invoice = await this.findInvoiceInClinic(payment.invoiceId, clinicId);
+    const previousInvoiceId = payment.invoiceId;
+    const invoice = await this.findInvoiceInClinic(
+      dto.invoiceId ?? payment.invoiceId,
+      clinicId,
+    );
 
+    const patientId = dto.patientId ?? payment.patientId ?? invoice.patientId;
+    const treatmentId =
+      dto.treatmentId ?? payment.treatmentId ?? invoice.treatmentId ?? null;
+
+    await this.assertPaymentRelationsInScope(
+      invoice,
+      clinicId,
+      patientId,
+      treatmentId,
+    );
+
+    const paidAmount = await this.getPaidAmount(invoice.id);
     const paidWithoutCurrent =
-      (await this.getPaidAmount(invoice.id)) - Number(payment.amount);
+      invoice.id === payment.invoiceId
+        ? paidAmount - Number(payment.amount)
+        : paidAmount;
     const nextAmount = Number(dto.amount ?? payment.amount);
 
     if (paidWithoutCurrent + nextAmount > Number(invoice.totalAmount)) {
@@ -94,10 +125,13 @@ export class PaymentsService {
       );
     }
 
-    Object.assign(payment, dto);
+    Object.assign(payment, dto, { patientId, treatmentId });
     const saved = await this.paymentRepository.save(payment);
 
     await this.refreshInvoiceStatus(invoice.id);
+    if (previousInvoiceId !== invoice.id) {
+      await this.refreshInvoiceStatus(previousInvoiceId);
+    }
 
     return saved;
   }
@@ -128,6 +162,43 @@ export class PaymentsService {
     }
 
     return invoice;
+  }
+
+  private async assertPaymentRelationsInScope(
+    invoice: Invoice,
+    clinicId: string,
+    patientId: string | null,
+    treatmentId: string | null,
+  ) {
+    if (patientId !== invoice.patientId) {
+      throw new BadRequestException(
+        'Payment patient does not match invoice patient',
+      );
+    }
+
+    if (!treatmentId) return;
+
+    if (invoice.treatmentId && treatmentId !== invoice.treatmentId) {
+      throw new BadRequestException(
+        'Payment treatment does not match invoice treatment',
+      );
+    }
+
+    const treatment = await this.treatmentRepository
+      .createQueryBuilder('treatment')
+      .innerJoin('treatment.patient', 'patient')
+      .where('treatment.id = :treatmentId', { treatmentId })
+      .andWhere('treatment.patientId = :patientId', {
+        patientId: invoice.patientId,
+      })
+      .andWhere('patient.clinicId = :clinicId', { clinicId })
+      .getOne();
+
+    if (!treatment) {
+      throw new BadRequestException(
+        'Payment treatment does not belong to invoice patient and clinic scope',
+      );
+    }
   }
 
   private async getPaidAmount(invoiceId: string) {

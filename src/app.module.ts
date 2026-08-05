@@ -41,6 +41,7 @@ import { TreatmentSessionsModule } from './treatment-sessions/treatment-sessions
 import { ClinicMembershipsModule } from './clinic-memberships/clinic-memberships.module';
 import { NotificationPreferencesModule } from './notification-preferences/notification-preferences.module';
 import { MembershipModule } from './membership/membership.module';
+import { BackofficeModule } from './backoffice/backoffice.module';
 
 @Module({
   imports: [
@@ -86,6 +87,7 @@ import { MembershipModule } from './membership/membership.module';
     }),
 
     CommonModule,
+    BackofficeModule,
     ClinicsModule,
     MembershipModule,
     ClinicMembershipsModule,

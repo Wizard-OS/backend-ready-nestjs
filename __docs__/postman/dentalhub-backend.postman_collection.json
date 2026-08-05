@@ -188,6 +188,11 @@
       "key": "userSessionId",
       "value": "",
       "type": "string"
+    },
+    {
+      "key": "patientAssignmentId",
+      "value": "",
+      "type": "string"
     }
   ],
   "item": [
@@ -498,7 +503,7 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/patients?limit=10&offset=0",
+              "raw": "{{baseUrl}}/patients?limit=10&offset=0&includeArchived=true",
               "host": ["{{baseUrl}}"],
               "path": ["patients"],
               "query": [
@@ -510,6 +515,11 @@
                 {
                   "key": "offset",
                   "value": "0",
+                  "disabled": true
+                },
+                {
+                  "key": "includeArchived",
+                  "value": "true",
                   "disabled": true
                 }
               ]
@@ -1654,6 +1664,28 @@
           }
         },
         {
+          "name": "Solicitar código OTP para recuperar contraseña",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/forgot-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "forgot-password"]
+            },
+            "description": "Solicitar código OTP para recuperar contraseña",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
           "name": "Cerrar sesión",
           "request": {
             "method": "POST",
@@ -1686,6 +1718,292 @@
                   "src": []
                 }
               ]
+            }
+          }
+        },
+        {
+          "name": "Restablecer contraseña usando OTP",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/reset-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "reset-password"]
+            },
+            "description": "Restablecer contraseña usando OTP",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"otp\": \"1234\",\n  \"newPassword\": \"NewPass1\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Validar código OTP de recuperación",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/verify-otp",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "verify-otp"]
+            },
+            "description": "Validar código OTP de recuperación",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"otp\": \"1234\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Backoffice",
+      "item": [
+        {
+          "name": "Listar clínicas para backoffice",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/backoffice/clinics?limit=10&offset=0&search=Dental Hub&status=active&planCode=premium",
+              "host": ["{{baseUrl}}"],
+              "path": ["backoffice", "clinics"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "disabled": true
+                },
+                {
+                  "key": "offset",
+                  "value": "0",
+                  "disabled": true
+                },
+                {
+                  "key": "search",
+                  "value": "Dental Hub",
+                  "disabled": true
+                },
+                {
+                  "key": "status",
+                  "value": "active",
+                  "disabled": true
+                },
+                {
+                  "key": "planCode",
+                  "value": "premium",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Listar clínicas para backoffice"
+          }
+        },
+        {
+          "name": "Obtener detalle global de una clínica",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/backoffice/clinics/{{clinicId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["backoffice", "clinics", "{{clinicId}}"]
+            },
+            "description": "Obtener detalle global de una clínica"
+          }
+        },
+        {
+          "name": "Obtener métricas globales del SaaS",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/backoffice/overview",
+              "host": ["{{baseUrl}}"],
+              "path": ["backoffice", "overview"]
+            },
+            "description": "Obtener métricas globales del SaaS"
+          }
+        },
+        {
+          "name": "Listar solicitudes de soporte para backoffice",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/backoffice/support-requests?limit=10&offset=0&search=facturación&status=open",
+              "host": ["{{baseUrl}}"],
+              "path": ["backoffice", "support-requests"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "disabled": true
+                },
+                {
+                  "key": "offset",
+                  "value": "0",
+                  "disabled": true
+                },
+                {
+                  "key": "search",
+                  "value": "facturación",
+                  "disabled": true
+                },
+                {
+                  "key": "status",
+                  "value": "open",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Listar solicitudes de soporte para backoffice"
+          }
+        },
+        {
+          "name": "Listar usuarios para backoffice",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/backoffice/users?limit=10&offset=0&search=test@dentalhub.com&status=active",
+              "host": ["{{baseUrl}}"],
+              "path": ["backoffice", "users"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "disabled": true
+                },
+                {
+                  "key": "offset",
+                  "value": "0",
+                  "disabled": true
+                },
+                {
+                  "key": "search",
+                  "value": "test@dentalhub.com",
+                  "disabled": true
+                },
+                {
+                  "key": "status",
+                  "value": "active",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Listar usuarios para backoffice"
+          }
+        },
+        {
+          "name": "Obtener detalle global de un usuario",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/backoffice/users/{{currentUserId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["backoffice", "users", "{{currentUserId}}"]
+            },
+            "description": "Obtener detalle global de un usuario"
+          }
+        },
+        {
+          "name": "Actualizar clínica desde backoffice",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/backoffice/clinics/{{clinicId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["backoffice", "clinics", "{{clinicId}}"]
+            },
+            "description": "Actualizar clínica desde backoffice",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Dental Clinic Center\",\n  \"phone\": \"+59824000000\",\n  \"email\": \"contacto@dentalhub.com\",\n  \"address\": \"Av. 18 de Julio 1234\",\n  \"logoUrl\": \"https://example.com/logo.png\",\n  \"timezone\": \"America/Mexico_City\",\n  \"currency\": \"MXN\",\n  \"workingHoursJson\": {\n    \"monday\": [\n      {\n        \"from\": \"09:00\",\n        \"to\": \"18:00\"\n      }\n    ]\n  },\n  \"isActive\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Asignar plan comercial desde backoffice",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/backoffice/clinics/{{clinicId}}/subscription",
+              "host": ["{{baseUrl}}"],
+              "path": ["backoffice", "clinics", "{{clinicId}}", "subscription"]
+            },
+            "description": "Asignar plan comercial desde backoffice",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"planCode\": \"premium\",\n  \"reason\": \"Upgrade manual solicitado por comercial\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Actualizar estado de solicitud de soporte",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/backoffice/support-requests/{{supportRequestId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["backoffice", "support-requests", "{{supportRequestId}}"]
+            },
+            "description": "Actualizar estado de solicitud de soporte",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"in_progress\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Actualizar usuario desde backoffice",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/backoffice/users/{{currentUserId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["backoffice", "users", "{{currentUserId}}"]
+            },
+            "description": "Actualizar usuario desde backoffice",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isActive\": true,\n  \"roles\": [\n    \"super-user\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           }
         }
@@ -1751,7 +2069,7 @@
             "description": "Actualizar membresía",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"clinicId\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n  \"userId\": \"f1e2d3c4-b5a6-7890-abcd-ef1234567890\",\n  \"role\": \"odontologist\",\n  \"permissionsJson\": {\n    \"canEdit\": true\n  }\n}",
+              "raw": "{\n  \"clinicId\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n  \"userId\": \"f1e2d3c4-b5a6-7890-abcd-ef1234567890\",\n  \"role\": \"odontologist\",\n  \"permissionsJson\": {\n    \"canEdit\": true\n  },\n  \"isActive\": true\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -2298,6 +2616,58 @@
       ]
     },
     {
+      "name": "Membership",
+      "item": [
+        {
+          "name": "Consultar membresía comercial actual",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/membership/current",
+              "host": ["{{baseUrl}}"],
+              "path": ["membership", "current"]
+            },
+            "description": "Consultar membresía comercial actual"
+          }
+        },
+        {
+          "name": "Asignar membresía manualmente",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/membership/manual",
+              "host": ["{{baseUrl}}"],
+              "path": ["membership", "manual"]
+            },
+            "description": "Asignar membresía manualmente",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"planCode\": \"premium\",\n  \"reason\": \"Upgrade manual MVP\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "Message Templates",
       "item": [
         {
@@ -2536,6 +2906,84 @@
       ]
     },
     {
+      "name": "Patient Assignments",
+      "item": [
+        {
+          "name": "Revocar asignación de paciente",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/patient-assignments/{{patientAssignmentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["patient-assignments", "{{patientAssignmentId}}"]
+            },
+            "description": "Revocar asignación de paciente"
+          }
+        },
+        {
+          "name": "Listar asignaciones activas de pacientes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/patient-assignments?patientId={{patientId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["patient-assignments"],
+              "query": [
+                {
+                  "key": "patientId",
+                  "value": "{{patientId}}",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Listar asignaciones activas de pacientes"
+          }
+        },
+        {
+          "name": "Asignar paciente a profesional secundario",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/patient-assignments",
+              "host": ["{{baseUrl}}"],
+              "path": ["patient-assignments"]
+            },
+            "description": "Asignar paciente a profesional secundario",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patientId\": \"{{patientId}}\",\n  \"professionalMembershipId\": \"{{professionalMembershipId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "Patient Files",
       "item": [
         {
@@ -2655,7 +3103,7 @@
       "name": "Patients",
       "item": [
         {
-          "name": "Eliminar paciente",
+          "name": "Archivar paciente",
           "request": {
             "method": "DELETE",
             "header": [
@@ -2670,7 +3118,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["patients", "{{patientId}}"]
             },
-            "description": "Eliminar paciente"
+            "description": "Archivar paciente"
           }
         },
         {
@@ -2718,6 +3166,25 @@
                 }
               }
             }
+          }
+        },
+        {
+          "name": "Reactivar paciente archivado",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/patients/{{patientId}}/reactivate",
+              "host": ["{{baseUrl}}"],
+              "path": ["patients", "{{patientId}}", "reactivate"]
+            },
+            "description": "Reactivar paciente archivado"
           }
         }
       ]

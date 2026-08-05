@@ -106,6 +106,23 @@ export class MembershipService {
   ) {
     await this.assertMembershipInClinic(clinicId, changedByMembershipId);
 
+    return this.assignPlan(clinicId, changedByMembershipId, planCode, reason);
+  }
+
+  async assignManualFromBackoffice(
+    clinicId: string,
+    planCode: MembershipPlanCode,
+    reason?: string,
+  ) {
+    return this.assignPlan(clinicId, null, planCode, reason);
+  }
+
+  private async assignPlan(
+    clinicId: string,
+    changedByMembershipId: string | null,
+    planCode: MembershipPlanCode,
+    reason?: string,
+  ) {
     const subscription = await this.ensureSubscription(clinicId);
     const previousPlanCode = subscription.planCode;
 

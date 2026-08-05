@@ -11,6 +11,7 @@ import { isUUID } from 'class-validator';
 import { Invoice } from './entities/invoice.entity';
 import { InvoiceItem } from './entities/invoice-item.entity';
 import { Patient } from '../patients/entities/patient.entity';
+import { Treatment } from '../treatments/entities/treatment.entity';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { UpdateInvoiceDto } from './dto/update-invoice.dto';
 import { CreateInvoiceItemDto } from './dto/create-invoice-item.dto';
@@ -27,12 +28,22 @@ export class InvoicesService {
 
     @InjectRepository(Patient)
     private readonly patientRepository: Repository<Patient>,
+
+    @InjectRepository(Treatment)
+    private readonly treatmentRepository: Repository<Treatment>,
   ) {}
 
   async create(clinicId: string, dto: CreateInvoiceDto) {
     this.ensureClinicScope(clinicId, dto.clinicId);
 
     await this.assertPatientInClinic(dto.patientId, clinicId);
+    if (dto.treatmentId) {
+      await this.assertTreatmentForPatient(
+        dto.treatmentId,
+        dto.patientId,
+        clinicId,
+      );
+    }
 
     const { subtotal, totalAmount } = this.computeTotals(dto);
 
@@ -96,6 +107,16 @@ export class InvoicesService {
     if (dto.clinicId) this.ensureClinicScope(clinicId, dto.clinicId);
     if (dto.patientId)
       await this.assertPatientInClinic(dto.patientId, clinicId);
+
+    const nextPatientId = dto.patientId ?? invoice.patientId;
+    const nextTreatmentId = dto.treatmentId ?? invoice.treatmentId;
+    if (nextTreatmentId) {
+      await this.assertTreatmentForPatient(
+        nextTreatmentId,
+        nextPatientId,
+        clinicId,
+      );
+    }
 
     const merged = {
       subtotal: dto.subtotal ?? invoice.subtotal,
@@ -272,6 +293,26 @@ export class InvoicesService {
     if (!patient) {
       throw new BadRequestException(
         'Patient does not belong to the requested clinic',
+      );
+    }
+  }
+
+  private async assertTreatmentForPatient(
+    treatmentId: string,
+    patientId: string,
+    clinicId: string,
+  ) {
+    const treatment = await this.treatmentRepository
+      .createQueryBuilder('treatment')
+      .innerJoin('treatment.patient', 'patient')
+      .where('treatment.id = :treatmentId', { treatmentId })
+      .andWhere('treatment.patientId = :patientId', { patientId })
+      .andWhere('patient.clinicId = :clinicId', { clinicId })
+      .getOne();
+
+    if (!treatment) {
+      throw new BadRequestException(
+        'Treatment does not belong to patient and clinic scope',
       );
     }
   }
