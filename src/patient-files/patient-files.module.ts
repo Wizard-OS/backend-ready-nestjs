@@ -10,12 +10,14 @@ import { PatientFile } from './entities/patient-file.entity';
 import { PatientFilesService } from './patient-files.service';
 import { PatientFilesController } from './patient-files.controller';
 import { MembershipModule } from '../membership/membership.module';
+import { StorageModule } from '../storage/storage.module';
 
 @Module({
   controllers: [PatientFilesController],
   providers: [PatientFilesService],
   imports: [
     MembershipModule,
+    StorageModule,
     PatientsModule,
     TypeOrmModule.forFeature([
       PatientFile,

@@ -13,6 +13,9 @@ import { Treatment } from '../../treatments/entities/treatment.entity';
 import { Appointment } from '../../appointments/entities/appointment.entity';
 import { ClinicalNote } from '../../clinical-notes/entities/clinical-note.entity';
 import { ClinicMembership } from '../../clinic-memberships/entities/clinic-membership.entity';
+import { StorageProviderType } from '../../storage/interfaces/storage-provider-type.enum';
+import { PatientFileStorageStatus } from '../interfaces/patient-file-storage-status.enum';
+import { PatientFileSyncSource } from '../interfaces/patient-file-sync-source.enum';
 import { PatientFileType } from '../interfaces/patient-file-type.enum';
 
 @Entity('patient_files')
@@ -79,6 +82,45 @@ export class PatientFile {
 
   @Column('int')
   size: number;
+
+  @Column({
+    type: 'enum',
+    enum: StorageProviderType,
+    enumName: 'storage_provider_type_enum',
+    default: StorageProviderType.LOCAL,
+  })
+  storageProvider: StorageProviderType;
+
+  @Column({
+    type: 'enum',
+    enum: PatientFileStorageStatus,
+    enumName: 'patient_file_storage_status_enum',
+    default: PatientFileStorageStatus.AVAILABLE,
+  })
+  storageStatus: PatientFileStorageStatus;
+
+  @Column({
+    type: 'enum',
+    enum: PatientFileSyncSource,
+    enumName: 'patient_file_sync_source_enum',
+    default: PatientFileSyncSource.APP,
+  })
+  syncSource: PatientFileSyncSource;
+
+  @Column('text', { nullable: true })
+  driveFileId: string | null;
+
+  @Column('text', { nullable: true })
+  driveFolderId: string | null;
+
+  @Column('text', { nullable: true })
+  checksum: string | null;
+
+  @Column('timestamptz', { nullable: true })
+  driveModifiedAt: Date | null;
+
+  @Column('jsonb', { default: {} })
+  externalMetadataJson: Record<string, unknown>;
 
   @Column('text', { nullable: true })
   description: string | null;
