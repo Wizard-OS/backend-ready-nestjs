@@ -1,4 +1,14 @@
-import { Body, Controller, Get, Param, Patch } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Req,
+} from '@nestjs/common';
+import type { Request } from 'express';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -10,6 +20,7 @@ import {
 
 import { OdontogramService } from './odontogram.service';
 import { UpdateOdontogramToothDto } from './dto/update-odontogram-tooth.dto';
+import { GenerateOdontogramPdfDto } from './dto/generate-odontogram-pdf.dto';
 import {
   AuthClinic,
   ClinicRoles,
@@ -52,6 +63,29 @@ export class OdontogramController {
     );
   }
 
+  @Post('pdf')
+  @ApiOperation({ summary: 'Generar y guardar PDF del odontograma' })
+  @ApiParam({ name: 'patientId', description: 'UUID del paciente' })
+  @ApiResponse({ status: 201, description: 'PDF generado como archivo' })
+  generatePdf(
+    @GetClinicId() clinicId: string,
+    @GetClinicMembershipId() membershipId: string,
+    @GetClinicMembershipRole() role: ClinicMembershipRole,
+    @GetClinicPermissions() permissionsJson: Record<string, boolean>,
+    @Param('patientId') patientId: string,
+    @Body() dto: GenerateOdontogramPdfDto,
+    @Req() request: Request,
+  ) {
+    const baseUrl = `${request.protocol}://${request.get('host')}`;
+    return this.odontogramService.generatePdf(
+      this.context(clinicId, membershipId, role, permissionsJson),
+      patientId,
+      membershipId,
+      baseUrl,
+      dto,
+    );
+  }
+
   @Patch('teeth/:toothCode')
   @ApiOperation({ summary: 'Actualizar estado de una pieza dental' })
   @ApiParam({ name: 'patientId', description: 'UUID del paciente' })
@@ -72,6 +106,26 @@ export class OdontogramController {
       toothCode,
       membershipId,
       dto,
+    );
+  }
+
+  @Delete('entries/:entryId')
+  @ApiOperation({ summary: 'Eliminar registro del odontograma' })
+  @ApiParam({ name: 'patientId', description: 'UUID del paciente' })
+  @ApiParam({ name: 'entryId', description: 'UUID del registro' })
+  @ApiResponse({ status: 200, description: 'Registro eliminado' })
+  removeEntry(
+    @GetClinicId() clinicId: string,
+    @GetClinicMembershipId() membershipId: string,
+    @GetClinicMembershipRole() role: ClinicMembershipRole,
+    @GetClinicPermissions() permissionsJson: Record<string, boolean>,
+    @Param('patientId') patientId: string,
+    @Param('entryId') entryId: string,
+  ) {
+    return this.odontogramService.removeEntry(
+      this.context(clinicId, membershipId, role, permissionsJson),
+      patientId,
+      entryId,
     );
   }
 

@@ -75,7 +75,7 @@ export class ClinicalNotesService {
           context,
         );
         allowed.push(note);
-      } catch (_) {
+      } catch {
         // Filter inaccessible patients out of collection results.
       }
     }

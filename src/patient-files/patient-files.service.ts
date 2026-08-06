@@ -7,7 +7,9 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import type { Express } from 'express';
 import { promises as fs } from 'fs';
+import * as path from 'path';
 import { createHash, randomUUID } from 'crypto';
+import { Readable } from 'stream';
 
 import { Patient } from '../patients/entities/patient.entity';
 import { Treatment } from '../treatments/entities/treatment.entity';
@@ -25,6 +27,18 @@ import {
 import { MembershipService } from '../membership/membership.service';
 import { StorageProviderType } from '../storage/interfaces/storage-provider-type.enum';
 import { StorageService } from '../storage/storage.service';
+
+export interface GeneratedPatientFileInput {
+  originalName: string;
+  path: string;
+  mimeType: string;
+  size: number;
+  type: PatientFileType;
+  description?: string;
+  appointmentId?: string | null;
+  clinicalNoteId?: string | null;
+  treatmentId?: string | null;
+}
 
 @Injectable()
 export class PatientFilesService {
@@ -159,6 +173,102 @@ export class PatientFilesService {
     return await this.patientFileRepository.save(patientFile);
   }
 
+  async createGenerated(
+    context: ClinicAccessContext,
+    patientId: string,
+    uploadedByMembershipId: string,
+    baseUrl: string,
+    input: GeneratedPatientFileInput,
+  ) {
+    this.patientAccessService.assertCanManageClinical(context);
+    await this.patientAccessService.assertPatientAccessible(context, patientId);
+    const patient = await this.findPatientInClinic(patientId, context.clinicId);
+
+    try {
+      await this.membershipService.assertCanStoreFile(
+        context.clinicId,
+        input.size,
+      );
+
+      if (input.appointmentId) {
+        await this.assertAppointmentForPatient(
+          input.appointmentId,
+          patientId,
+          context.clinicId,
+        );
+      }
+
+      if (input.clinicalNoteId) {
+        await this.assertClinicalNoteForPatient(
+          input.clinicalNoteId,
+          patientId,
+          context.clinicId,
+        );
+      }
+
+      if (input.treatmentId) {
+        await this.assertTreatmentForPatient(
+          input.treatmentId,
+          patientId,
+          context.clinicId,
+        );
+      }
+
+      const patientFileId = randomUUID();
+      const checksum = await this.calculateChecksum(input.path);
+      const file = this.toGeneratedMulterFile(input);
+      const storageResult = await this.storageService.upload({
+        clinicId: context.clinicId,
+        clinicName: patient.clinic.name,
+        patient,
+        fileId: patientFileId,
+        file,
+        type: input.type,
+        checksum,
+        baseUrl,
+        relation: {
+          appointmentId: input.appointmentId ?? null,
+          clinicalNoteId: input.clinicalNoteId ?? null,
+          treatmentId: input.treatmentId ?? null,
+        },
+      });
+
+      if (storageResult.storageProvider === StorageProviderType.GOOGLE_DRIVE) {
+        await fs.unlink(input.path).catch(() => undefined);
+      }
+
+      const patientFile = this.patientFileRepository.create({
+        id: patientFileId,
+        patientId,
+        appointmentId: input.appointmentId ?? null,
+        clinicalNoteId: input.clinicalNoteId ?? null,
+        treatmentId: input.treatmentId ?? null,
+        uploadedByMembershipId,
+        type: input.type,
+        description: input.description ?? null,
+        originalName: input.originalName,
+        storedName: storageResult.storedName,
+        path: storageResult.path,
+        url: storageResult.url,
+        mimeType: storageResult.mimeType,
+        size: storageResult.size,
+        storageProvider: storageResult.storageProvider,
+        storageStatus: PatientFileStorageStatus.AVAILABLE,
+        syncSource: PatientFileSyncSource.APP,
+        driveFileId: storageResult.driveFileId ?? null,
+        driveFolderId: storageResult.driveFolderId ?? null,
+        checksum,
+        driveModifiedAt: storageResult.driveModifiedAt ?? null,
+        externalMetadataJson: storageResult.externalMetadataJson ?? {},
+      });
+
+      return await this.patientFileRepository.save(patientFile);
+    } catch (error) {
+      await fs.unlink(input.path).catch(() => undefined);
+      throw error;
+    }
+  }
+
   async findAllByPatient(context: ClinicAccessContext, patientId: string) {
     await this.patientAccessService.assertPatientAccessible(context, patientId);
 
@@ -221,6 +331,23 @@ export class PatientFilesService {
     const content = await fs.readFile(filePath);
     hash.update(content);
     return hash.digest('hex');
+  }
+
+  private toGeneratedMulterFile(
+    input: GeneratedPatientFileInput,
+  ): Express.Multer.File {
+    return {
+      fieldname: 'file',
+      originalname: input.originalName,
+      encoding: '7bit',
+      mimetype: input.mimeType,
+      size: input.size,
+      destination: path.dirname(input.path),
+      filename: path.basename(input.path),
+      path: input.path,
+      buffer: Buffer.alloc(0),
+      stream: Readable.from([]),
+    };
   }
 
   private async findPatientInClinic(

@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { OAuth2Client } from 'google-auth-library';
 import { drive_v3, google } from 'googleapis';
 import { createReadStream } from 'fs';
 import { Repository } from 'typeorm';
@@ -32,7 +33,7 @@ export class GoogleDriveStorageProvider implements StorageProvider {
     private readonly tokenEncryption: TokenEncryptionService,
   ) {}
 
-  private createOAuthClient(redirectUri?: string): any {
+  private createOAuthClient(redirectUri?: string): OAuth2Client {
     const clientId = process.env.GOOGLE_DRIVE_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_DRIVE_CLIENT_SECRET;
 
@@ -93,6 +94,7 @@ export class GoogleDriveStorageProvider implements StorageProvider {
       expiry_date: integration.tokenExpiresAt?.getTime(),
     });
 
+    await Promise.resolve();
     return google.drive({ version: 'v3', auth: client });
   }
 

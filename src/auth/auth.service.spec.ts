@@ -33,7 +33,7 @@ describe('AuthService password reset', () => {
 
     const userRepository = {
       findOne: jest.fn(
-        async ({ where }: { where: { id?: string; email?: string } }) => {
+        ({ where }: { where: { id?: string; email?: string } }) => {
           if (where.id) return users.get(where.id) ?? null;
           if (where.email) {
             return (
@@ -44,7 +44,7 @@ describe('AuthService password reset', () => {
           return null;
         },
       ),
-      update: jest.fn(async (id: string, patch: Partial<User>) => {
+      update: jest.fn((id: string, patch: Partial<User>) => {
         const user = users.get(id);
         if (!user) return { affected: 0 };
         Object.assign(user, patch);
@@ -53,7 +53,7 @@ describe('AuthService password reset', () => {
     };
 
     const clinicMembershipRepository = {
-      find: jest.fn(async () => []),
+      find: jest.fn(() => []),
     };
 
     const jwtService = {

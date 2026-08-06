@@ -172,29 +172,28 @@ export class PatientAccessService {
 
     if (this.canViewAllPatients(context)) return query;
 
+    const permanentAccessSubQuery = query
+      .subQuery()
+      .select('assignment."patientId"')
+      .from(PatientProfessionalAssignment, 'assignment')
+      .where('assignment."clinicId" = :clinicId')
+      .andWhere('assignment."professionalMembershipId" = :membershipId')
+      .andWhere('assignment."isActive" = true')
+      .getQuery();
+    const temporaryAccessSubQuery = query
+      .subQuery()
+      .select('appointment."patientId"')
+      .from(Appointment, 'appointment')
+      .where('appointment."clinicId" = :clinicId')
+      .andWhere('appointment."professionalMembershipId" = :membershipId')
+      .andWhere('appointment.status != :cancelled')
+      .getQuery();
+
     query.andWhere(
       new Brackets((qb) => {
-        qb.where((subQb) => {
-          const subQuery = subQb
-            .subQuery()
-            .select('assignment."patientId"')
-            .from(PatientProfessionalAssignment, 'assignment')
-            .where('assignment."clinicId" = :clinicId')
-            .andWhere('assignment."professionalMembershipId" = :membershipId')
-            .andWhere('assignment."isActive" = true')
-            .getQuery();
-          return `${alias}.id IN ${subQuery}`;
-        }).orWhere((subQb) => {
-          const subQuery = subQb
-            .subQuery()
-            .select('appointment."patientId"')
-            .from(Appointment, 'appointment')
-            .where('appointment."clinicId" = :clinicId')
-            .andWhere('appointment."professionalMembershipId" = :membershipId')
-            .andWhere('appointment.status != :cancelled')
-            .getQuery();
-          return `${alias}.id IN ${subQuery}`;
-        });
+        qb.where(`${alias}.id IN ${permanentAccessSubQuery}`).orWhere(
+          `${alias}.id IN ${temporaryAccessSubQuery}`,
+        );
       }),
     );
     query.setParameters({

@@ -67,7 +67,7 @@ export class ClinicalRecordsService {
         );
         this.patientAccessService.sanitizePatient(record.patient, context);
         allowed.push(record);
-      } catch (_) {
+      } catch {
         // Patient access is intentionally filtered out of collection results.
       }
     }

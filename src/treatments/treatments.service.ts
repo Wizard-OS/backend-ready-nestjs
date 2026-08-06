@@ -82,7 +82,7 @@ export class TreatmentsService {
           treatment.patientId,
         );
         allowed.push(treatment);
-      } catch (_) {
+      } catch {
         // Filter inaccessible patients out of collection results.
       }
     }

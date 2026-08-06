@@ -4,19 +4,28 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { promises as fs } from 'fs';
+import * as path from 'path';
+import { randomUUID } from 'crypto';
 import { Repository } from 'typeorm';
 
 import { Patient } from '../patients/entities/patient.entity';
 import { Treatment } from '../treatments/entities/treatment.entity';
 import { ClinicalNote } from '../clinical-notes/entities/clinical-note.entity';
+import { PatientFileType } from '../patient-files/interfaces/patient-file-type.enum';
+import { PatientFilesService } from '../patient-files/patient-files.service';
 import { OdontogramEntry } from './entities/odontogram-entry.entity';
 import { UpdateOdontogramToothDto } from './dto/update-odontogram-tooth.dto';
+import { GenerateOdontogramPdfDto } from './dto/generate-odontogram-pdf.dto';
 import {
   ClinicAccessContext,
   PatientAccessService,
 } from '../patients/services/patient-access.service';
+import { ToothStatus } from './interfaces/tooth-status.enum';
+import { ToothSurface } from './interfaces/tooth-surface.enum';
+import { OdontogramPdfService } from './odontogram-pdf.service';
 
-const ADULT_TOOTH_CODES = new Set([
+const ADULT_TOOTH_CODES = [
   '11',
   '12',
   '13',
@@ -49,7 +58,73 @@ const ADULT_TOOTH_CODES = new Set([
   '46',
   '47',
   '48',
-]);
+];
+
+const ADULT_TOOTH_CODE_SET = new Set(ADULT_TOOTH_CODES);
+
+const ADULT_TOOTH_ROWS = [
+  ['18', '17', '16', '15', '14', '13', '12', '11'],
+  ['21', '22', '23', '24', '25', '26', '27', '28'],
+  ['48', '47', '46', '45', '44', '43', '42', '41'],
+  ['31', '32', '33', '34', '35', '36', '37', '38'],
+];
+
+const ODONTOGRAM_LEGEND = [
+  {
+    status: ToothStatus.HEALTHY,
+    label: 'Sano',
+    abbreviation: 'S',
+    colorHex: '#E5E7EB',
+  },
+  {
+    status: ToothStatus.CARIES,
+    label: 'Caries',
+    abbreviation: 'CA',
+    colorHex: '#F87171',
+  },
+  {
+    status: ToothStatus.MISSING,
+    label: 'Ausente',
+    abbreviation: 'AU',
+    colorHex: '#9CA3AF',
+  },
+  {
+    status: ToothStatus.RESTORED,
+    label: 'Restaurado',
+    abbreviation: 'R',
+    colorHex: '#60A5FA',
+  },
+  {
+    status: ToothStatus.ENDODONTICS,
+    label: 'Endodoncia',
+    abbreviation: 'EN',
+    colorHex: '#A78BFA',
+  },
+  {
+    status: ToothStatus.CROWN,
+    label: 'Corona',
+    abbreviation: 'CO',
+    colorHex: '#FBBF24',
+  },
+  {
+    status: ToothStatus.IMPLANT,
+    label: 'Implante',
+    abbreviation: 'IM',
+    colorHex: '#34D399',
+  },
+  {
+    status: ToothStatus.EXTRACTION_INDICATED,
+    label: 'Extraccion indicada',
+    abbreviation: 'EX',
+    colorHex: '#DC2626',
+  },
+  {
+    status: ToothStatus.OBSERVATION,
+    label: 'Observacion',
+    abbreviation: 'OB',
+    colorHex: '#FB923C',
+  },
+];
 
 @Injectable()
 export class OdontogramService {
@@ -67,15 +142,33 @@ export class OdontogramService {
     private readonly treatmentRepository: Repository<Treatment>,
 
     private readonly patientAccessService: PatientAccessService,
+    private readonly patientFilesService: PatientFilesService,
+    private readonly odontogramPdfService: OdontogramPdfService,
   ) {}
 
   async findByPatient(context: ClinicAccessContext, patientId: string) {
     await this.patientAccessService.assertPatientAccessible(context, patientId);
+    const patient = await this.findPatientForResponse(context, patientId);
+    const entries = await this.findEntriesByPatient(patientId);
 
-    return await this.odontogramRepository.find({
-      where: { patientId },
-      order: { toothCode: 'ASC' },
-    });
+    return {
+      patient,
+      dentition: {
+        type: 'adult',
+        notation: 'FDI',
+        toothCodes: ADULT_TOOTH_CODES,
+        rows: ADULT_TOOTH_ROWS,
+        surfaces: Object.values(ToothSurface),
+        mesialDistalRule:
+          'Mesial y distal se guardan como superficies clinicas canonicas; la orientacion visual depende del cuadrante frente a la linea media.',
+      },
+      legend: ODONTOGRAM_LEGEND,
+      teeth: ADULT_TOOTH_CODES.map((toothCode) => ({
+        toothCode,
+        entries: entries.filter((entry) => entry.toothCode === toothCode),
+      })),
+      entries,
+    };
   }
 
   async updateTooth(
@@ -105,38 +198,147 @@ export class OdontogramService {
       );
     }
 
-    let entry = await this.odontogramRepository.findOne({
-      where: { patientId, toothCode },
+    const surfaces = this.resolveSurfaces(dto.surfaces);
+    const actionGroupId = randomUUID();
+    const entries = await Promise.all(
+      surfaces.map(async (surface) => {
+        let entry = await this.odontogramRepository.findOne({
+          where: { patientId, toothCode, surface },
+        });
+
+        if (!entry) {
+          entry = this.odontogramRepository.create({
+            patientId,
+            toothCode,
+            surface,
+          });
+        }
+
+        Object.assign(entry, {
+          status: dto.status,
+          actionGroupId,
+          treatmentType: dto.treatmentType ?? null,
+          description: dto.description ?? null,
+          observation: dto.observation ?? null,
+          clinicalNoteId: dto.clinicalNoteId ?? null,
+          treatmentId: dto.treatmentId ?? null,
+          professionalMembershipId,
+        });
+
+        return entry;
+      }),
+    );
+
+    const savedEntries = await this.odontogramRepository.save(entries);
+
+    return {
+      actionGroupId,
+      entries: savedEntries,
+    };
+  }
+
+  async removeEntry(
+    context: ClinicAccessContext,
+    patientId: string,
+    entryId: string,
+  ) {
+    this.patientAccessService.assertCanManageClinical(context);
+    await this.patientAccessService.assertPatientAccessible(context, patientId);
+
+    const entry = await this.odontogramRepository.findOne({
+      where: { id: entryId, patientId },
     });
 
     if (!entry) {
-      entry = this.odontogramRepository.create({
-        patientId,
-        toothCode,
-      });
+      throw new NotFoundException(`Odontogram entry ${entryId} not found`);
     }
 
-    Object.assign(entry, {
-      status: dto.status,
-      observation: dto.observation ?? null,
-      clinicalNoteId: dto.clinicalNoteId ?? null,
-      treatmentId: dto.treatmentId ?? null,
-      professionalMembershipId,
-    });
+    await this.odontogramRepository.remove(entry);
+    return { message: `Odontogram entry ${entryId} deleted` };
+  }
 
-    return await this.odontogramRepository.save(entry);
+  async generatePdf(
+    context: ClinicAccessContext,
+    patientId: string,
+    professionalMembershipId: string,
+    baseUrl: string,
+    dto: GenerateOdontogramPdfDto,
+  ) {
+    this.patientAccessService.assertCanManageClinical(context);
+    await this.patientAccessService.assertPatientAccessible(context, patientId);
+    const patient = await this.findPatientInClinic(patientId, context.clinicId);
+    const entries = await this.findEntriesByPatient(patientId);
+    const generatedAt = new Date();
+    const pdf = this.odontogramPdfService.generate({
+      patient,
+      entries,
+      generatedAt,
+    });
+    const uploadDir = path.join(process.cwd(), 'uploads', 'patient-files');
+    await fs.mkdir(uploadDir, { recursive: true });
+
+    const safeDate = generatedAt.toISOString().slice(0, 10);
+    const originalName = `odontograma-${patient.firstName}-${patient.lastName}-${safeDate}.pdf`;
+    const filename = `${Date.now()}-${randomUUID()}-odontogram.pdf`;
+    const filePath = path.join(uploadDir, filename);
+    await fs.writeFile(filePath, pdf);
+
+    return await this.patientFilesService.createGenerated(
+      context,
+      patientId,
+      professionalMembershipId,
+      baseUrl,
+      {
+        originalName,
+        path: filePath,
+        mimeType: 'application/pdf',
+        size: pdf.length,
+        type: PatientFileType.PDF,
+        description: dto.description ?? 'Reporte PDF de odontograma',
+        appointmentId: dto.appointmentId ?? null,
+        clinicalNoteId: dto.clinicalNoteId ?? null,
+        treatmentId: dto.treatmentId ?? null,
+      },
+    );
+  }
+
+  private resolveSurfaces(surfaces?: ToothSurface[]): ToothSurface[] {
+    const resolved = surfaces?.length ? surfaces : [ToothSurface.FULL];
+    const unique = new Set(resolved);
+
+    if (unique.size !== resolved.length) {
+      throw new BadRequestException('Duplicate tooth surfaces are not allowed');
+    }
+
+    if (unique.has(ToothSurface.FULL) && unique.size > 1) {
+      throw new BadRequestException(
+        'Full tooth surface cannot be combined with partial surfaces',
+      );
+    }
+
+    return resolved;
   }
 
   private assertAdultToothCode(toothCode: string) {
-    if (!ADULT_TOOTH_CODES.has(toothCode)) {
+    if (!ADULT_TOOTH_CODE_SET.has(toothCode)) {
       throw new BadRequestException('Invalid adult tooth code');
     }
   }
 
-  private async assertPatientInClinic(patientId: string, clinicId: string) {
+  private async findPatientForResponse(
+    context: ClinicAccessContext,
+    patientId: string,
+  ) {
+    const patient = await this.findPatientInClinic(patientId, context.clinicId);
+    return this.patientAccessService.sanitizePatient(patient, context);
+  }
+
+  private async findPatientInClinic(
+    patientId: string,
+    clinicId: string,
+  ): Promise<Patient> {
     const patient = await this.patientRepository.findOne({
       where: { id: patientId, clinicId },
-      select: { id: true },
     });
 
     if (!patient) {
@@ -144,6 +346,15 @@ export class OdontogramService {
         `Patient ${patientId} does not belong to the requested clinic`,
       );
     }
+
+    return patient;
+  }
+
+  private async findEntriesByPatient(patientId: string) {
+    return await this.odontogramRepository.find({
+      where: { patientId },
+      order: { toothCode: 'ASC', surface: 'ASC', updatedAt: 'DESC' },
+    });
   }
 
   private async assertClinicalNoteForPatient(

@@ -14,9 +14,10 @@ import { Treatment } from '../../treatments/entities/treatment.entity';
 import { ClinicalNote } from '../../clinical-notes/entities/clinical-note.entity';
 import { ClinicMembership } from '../../clinic-memberships/entities/clinic-membership.entity';
 import { ToothStatus } from '../interfaces/tooth-status.enum';
+import { ToothSurface } from '../interfaces/tooth-surface.enum';
 
 @Entity('odontogram_entries')
-@Unique(['patientId', 'toothCode'])
+@Unique(['patientId', 'toothCode', 'surface'])
 export class OdontogramEntry {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -33,10 +34,26 @@ export class OdontogramEntry {
 
   @Column({
     type: 'enum',
+    enum: ToothSurface,
+    default: ToothSurface.FULL,
+  })
+  surface: ToothSurface;
+
+  @Column({
+    type: 'enum',
     enum: ToothStatus,
     default: ToothStatus.HEALTHY,
   })
   status: ToothStatus;
+
+  @Column('uuid', { nullable: true })
+  actionGroupId: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  treatmentType: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  description: string | null;
 
   @Column({ type: 'text', nullable: true })
   observation: string | null;

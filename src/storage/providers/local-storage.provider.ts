@@ -17,8 +17,8 @@ import { StorageProviderType } from '../interfaces/storage-provider-type.enum';
 export class LocalStorageProvider implements StorageProvider {
   readonly type = StorageProviderType.LOCAL;
 
-  async upload(input: StorageUploadInput): Promise<StorageUploadResult> {
-    return {
+  upload(input: StorageUploadInput): Promise<StorageUploadResult> {
+    return Promise.resolve({
       storageProvider: StorageProviderType.LOCAL,
       storedName: input.file.filename,
       path: input.file.path,
@@ -29,7 +29,7 @@ export class LocalStorageProvider implements StorageProvider {
       driveFolderId: null,
       driveModifiedAt: null,
       externalMetadataJson: {},
-    };
+    });
   }
 
   async markUnavailable(file: { storedName: string }): Promise<void> {

@@ -27,6 +27,6 @@ import { StorageModule } from '../storage/storage.module';
       Treatment,
     ]),
   ],
-  exports: [TypeOrmModule],
+  exports: [TypeOrmModule, PatientFilesService],
 })
 export class PatientFilesModule {}

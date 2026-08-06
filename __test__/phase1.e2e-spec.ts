@@ -366,8 +366,44 @@ describe('Phase 1 Flow (e2e)', () => {
       })
       .expect(200);
 
-    expect(odontogramEntry.body.status).toBe('caries');
-    expect(odontogramEntry.body.professionalMembershipId).toBe(membershipId);
+    expect(odontogramEntry.body.entries).toHaveLength(1);
+    expect(odontogramEntry.body.entries[0]).toEqual(
+      expect.objectContaining({
+        status: 'caries',
+        surface: 'full',
+        professionalMembershipId: membershipId,
+      }),
+    );
+
+    const surfaceUpdate = await request(app.getHttpServer())
+      .patch(`/patients/${patientId}/odontogram/teeth/36`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .set('x-clinic-id', clinicId)
+      .send({
+        status: 'restored',
+        surfaces: ['vestibular', 'occlusal'],
+        treatmentType: 'Restauración',
+        description: 'Resina compuesta en superficies seleccionadas',
+        observation: 'Se registra acción multi-superficie',
+        clinicalNoteId,
+        treatmentId,
+      })
+      .expect(200);
+
+    expect(surfaceUpdate.body.entries).toHaveLength(2);
+    expect(
+      new Set(
+        surfaceUpdate.body.entries.map(
+          (entry: { actionGroupId: string }) => entry.actionGroupId,
+        ),
+      ).size,
+    ).toBe(1);
+    expect(surfaceUpdate.body.entries).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ surface: 'vestibular', status: 'restored' }),
+        expect.objectContaining({ surface: 'occlusal', status: 'restored' }),
+      ]),
+    );
 
     const odontogram = await request(app.getHttpServer())
       .get(`/patients/${patientId}/odontogram`)
@@ -375,14 +411,77 @@ describe('Phase 1 Flow (e2e)', () => {
       .set('x-clinic-id', clinicId)
       .expect(200);
 
-    expect(odontogram.body).toEqual(
+    expect(odontogram.body.dentition.toothCodes).toContain('36');
+    expect(odontogram.body.legend).toEqual(
+      expect.arrayContaining([expect.objectContaining({ status: 'caries' })]),
+    );
+    expect(odontogram.body.entries).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           toothCode: '36',
           status: 'caries',
+          surface: 'full',
+        }),
+        expect.objectContaining({
+          toothCode: '36',
+          status: 'restored',
+          surface: 'occlusal',
         }),
       ]),
     );
+
+    await request(app.getHttpServer())
+      .patch(`/patients/${patientId}/odontogram/teeth/49`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .set('x-clinic-id', clinicId)
+      .send({ status: 'caries' })
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .patch(`/patients/${patientId}/odontogram/teeth/36`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .set('x-clinic-id', clinicId)
+      .send({ status: 'caries', surfaces: ['full', 'occlusal'] })
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .patch(`/patients/${patientId}/odontogram/teeth/36`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .set('x-clinic-id', clinicId)
+      .send({
+        status: 'caries',
+        clinicalNoteId: '00000000-0000-4000-8000-000000000000',
+      })
+      .expect(400);
+
+    const removableEntryId = surfaceUpdate.body.entries[0].id;
+    await request(app.getHttpServer())
+      .delete(`/patients/${patientId}/odontogram/entries/${removableEntryId}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .set('x-clinic-id', clinicId)
+      .expect(200);
+
+    const pdfResponse = await request(app.getHttpServer())
+      .post(`/patients/${patientId}/odontogram/pdf`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .set('x-clinic-id', clinicId)
+      .send({
+        clinicalNoteId,
+        treatmentId,
+        description: 'Odontograma inicial',
+      })
+      .expect(201);
+
+    expect(pdfResponse.body.patientId).toBe(patientId);
+    expect(pdfResponse.body.type).toBe('pdf');
+    expect(pdfResponse.body.mimeType).toBe('application/pdf');
+    expect(fs.existsSync(pdfResponse.body.path)).toBe(true);
+
+    await request(app.getHttpServer())
+      .delete(`/patient-files/${pdfResponse.body.id}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .set('x-clinic-id', clinicId)
+      .expect(200);
   });
 
   it('handles partial payment and invoice status updates', async () => {
