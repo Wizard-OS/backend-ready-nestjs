@@ -90,11 +90,95 @@ Variables clave:
 - `DB_NAME`: nombre de base (default `DentalHubDB`)
 - `DB_USERNAME`: usuario DB (default `postgres`)
 - `DB_PASSWORD`: password DB (default `postgres`)
+- `DB_SSL`:
+  - `false` (o no definido): conexión PostgreSQL sin SSL, útil para Docker local
+  - `true`: habilita SSL para Neon, Supabase u otros Postgres administrados
 - `DB_SYNCHRONIZE`:
   - `true` (o no definido): habilita `synchronize` para desarrollo local
   - `false`: deshabilita synchronize (recomendado para producción)
 
-Nota: en producción se deben aplicar migraciones SQL/TypeORM y mantener `DB_SYNCHRONIZE=false`.
+Nota: en producción se deben aplicar migraciones SQL y mantener `DB_SYNCHRONIZE=false`.
+
+## Deploy en Render Free con Neon o Supabase
+
+Este backend puede correr como **Render Web Service Free** y usar una base PostgreSQL externa en Neon o Supabase.
+
+Limitaciones importantes del free tier:
+- Render Web Services Free comparten 750 horas mensuales por workspace y hacen spin down tras inactividad.
+- Render permite solo una Render Postgres Free activa por workspace; usar Neon/Supabase evita ese límite.
+- Render Free no conserva archivos locales en `/uploads` después de reinicios, redeploys o spin down. Para archivos persistentes, usar Google Drive u otro storage externo.
+
+Referencias:
+- [Render Free](https://render.com/docs/free)
+- [Render Web Services](https://render.com/docs/web-services)
+- [Supabase Postgres](https://supabase.com/docs/guides/database/connecting-to-postgres)
+- [Neon Postgres](https://neon.com/docs/connect/query-with-psql-editor)
+
+### 1. Preparar la base externa
+
+1. Crear un proyecto PostgreSQL en Neon o Supabase.
+2. Copiar los datos de conexión: host, puerto, base, usuario y password.
+3. En Neon, usar puerto `5432` y SSL habilitado.
+4. En Supabase Free, si la conexión directa IPv6 falla desde Render, usar el pooler/session mode desde el panel de conexión.
+
+### 2. Aplicar migraciones
+
+Antes del primer deploy productivo, aplicar los SQL de `src/migrations` en orden cronológico contra la base externa:
+
+```bash
+for file in $(ls src/migrations/*.sql | sort); do
+  psql "$DATABASE_URL" -f "$file"
+done
+```
+
+Usar una `DATABASE_URL` de Neon/Supabase con SSL cuando corresponda, por ejemplo con `sslmode=require`.
+
+### 3. Crear el Web Service en Render
+
+En Render:
+
+1. `New > Web Service`.
+2. Conectar el repo.
+3. Runtime: `Node`.
+4. Instance Type: `Free`.
+5. Build Command:
+
+```bash
+corepack enable && pnpm install --frozen-lockfile && pnpm build
+```
+
+6. Start Command:
+
+```bash
+pnpm start:prod
+```
+
+No es necesario configurar `PORT`; Render lo provee y `src/main.ts` ya usa `process.env.PORT`.
+
+### 4. Variables de entorno para Render
+
+```env
+NODE_ENV=production
+DB_HOST=<host-neon-o-supabase>
+DB_PORT=5432
+DB_NAME=<database>
+DB_USERNAME=<user>
+DB_PASSWORD=<password>
+DB_SSL=true
+DB_SYNCHRONIZE=false
+JWT_SECRET=<secreto-largo>
+INTEGRATION_TOKEN_ENCRYPTION_KEY=<secreto-largo-o-64-hex>
+HOST_API=https://<tu-servicio>.onrender.com/api
+```
+
+### 5. Verificación
+
+Cuando el deploy quede `Live`, probar:
+
+```text
+https://<tu-servicio>.onrender.com/api
+https://<tu-servicio>.onrender.com/api/docs
+```
 
 ## Scripts
 - `pnpm start:dev`: levanta API en modo watch

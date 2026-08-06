@@ -73,18 +73,24 @@ import { BackofficeModule } from './backoffice/backoffice.module';
         ],
       });
     })(),
-    TypeOrmModule.forRoot({
-      type: 'postgres',
-      host: process.env.DB_HOST || '127.0.0.1',
-      port: +(process.env.DB_PORT || 5432),
-      database: process.env.DB_NAME || 'DentalHubDB',
-      username: process.env.DB_USERNAME || 'postgres',
-      password: process.env.DB_PASSWORD || 'postgres',
-      autoLoadEntities: true,
-      synchronize: process.env.DB_SYNCHRONIZE !== 'false',
-      retryAttempts: 10,
-      retryDelay: 3000,
-    }),
+    (() => {
+      const ssl =
+        process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false;
+
+      return TypeOrmModule.forRoot({
+        type: 'postgres',
+        host: process.env.DB_HOST || '127.0.0.1',
+        port: +(process.env.DB_PORT || 5432),
+        database: process.env.DB_NAME || 'DentalHubDB',
+        username: process.env.DB_USERNAME || 'postgres',
+        password: process.env.DB_PASSWORD || 'postgres',
+        ssl,
+        autoLoadEntities: true,
+        synchronize: process.env.DB_SYNCHRONIZE !== 'false',
+        retryAttempts: 10,
+        retryDelay: 3000,
+      });
+    })(),
 
     CommonModule,
     BackofficeModule,
