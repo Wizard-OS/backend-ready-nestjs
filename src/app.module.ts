@@ -42,27 +42,7 @@ import { ClinicMembershipsModule } from './clinic-memberships/clinic-memberships
 import { NotificationPreferencesModule } from './notification-preferences/notification-preferences.module';
 import { MembershipModule } from './membership/membership.module';
 import { BackofficeModule } from './backoffice/backoffice.module';
-
-function getEnv(name: string): string | undefined {
-  const value = process.env[name]?.trim();
-
-  if (!value) {
-    return undefined;
-  }
-
-  const first = value[0];
-  const last = value[value.length - 1];
-
-  if ((first === '"' && last === '"') || (first === "'" && last === "'")) {
-    return value.slice(1, -1);
-  }
-
-  return value;
-}
-
-function getBooleanEnv(name: string): boolean {
-  return ['1', 'true', 'yes'].includes(getEnv(name)?.toLowerCase() ?? '');
-}
+import { getBooleanEnv, getEnv, normalizeDatabaseUrl } from './config/env';
 
 @Module({
   imports: [
@@ -95,11 +75,13 @@ function getBooleanEnv(name: string): boolean {
       });
     })(),
     (() => {
-      const databaseUrl = getEnv('DATABASE_URL');
-      const ssl =
-        getBooleanEnv('DB_SSL') || databaseUrl?.includes('sslmode=require')
-          ? { rejectUnauthorized: false }
-          : false;
+      const rawDatabaseUrl = getEnv('DATABASE_URL');
+      const databaseUrl = rawDatabaseUrl
+        ? normalizeDatabaseUrl(rawDatabaseUrl)
+        : undefined;
+      const ssl = getBooleanEnv('DB_SSL')
+        ? { rejectUnauthorized: false }
+        : undefined;
       const synchronize =
         getEnv('DB_SYNCHRONIZE') === undefined
           ? getEnv('NODE_ENV') !== 'production'
@@ -116,7 +98,7 @@ function getBooleanEnv(name: string): boolean {
               username: getEnv('DB_USERNAME') || 'postgres',
               password: getEnv('DB_PASSWORD') || 'postgres',
             }),
-        ssl,
+        ...(ssl ? { ssl } : {}),
         autoLoadEntities: true,
         synchronize,
         retryAttempts: 10,

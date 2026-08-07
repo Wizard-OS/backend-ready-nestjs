@@ -13,6 +13,7 @@ import { ClinicScopeGuard } from './guards/clinic-scope.guard';
 import { UserRoleGuard } from './guards/user-role.guard';
 import { ClinicRoleGuard } from './guards/clinic-role.guard';
 import { ClinicPermissionGuard } from './guards/clinic-permission.guard';
+import { getRequiredEnv } from '../config/env';
 
 @Global()
 @Module({
@@ -36,22 +37,17 @@ import { ClinicPermissionGuard } from './guards/clinic-permission.guard';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => {
-        // console.log('JWT Secret', configService.get('JWT_SECRET') )
-        // console.log('JWT SECRET', process.env.JWT_SECRET)
         return {
-          secret: configService.get('JWT_SECRET'),
+          secret: getRequiredEnv(
+            'JWT_SECRET',
+            configService.get<string>('JWT_SECRET') ?? process.env.JWT_SECRET,
+          ),
           signOptions: {
             expiresIn: '2h',
           },
         };
       },
     }),
-    // JwtModule.register({
-    // secret: process.env.JWT_SECRET,
-    // signOptions: {
-    //   expiresIn:'2h'
-    // }
-    // })
   ],
   exports: [
     TypeOrmModule,

@@ -84,7 +84,9 @@ La API cuenta con documentación interactiva generada con **Swagger (OpenAPI 3.0
 ## Configuración de Entorno
 
 Variables clave:
+
 - `PORT`: puerto HTTP de la API (default `3000`)
+- `DATABASE_URL`: URL PostgreSQL completa. Si está definida, tiene prioridad sobre `DB_HOST`, `DB_NAME`, `DB_USERNAME` y `DB_PASSWORD`.
 - `DB_HOST`: host PostgreSQL (default `127.0.0.1`)
 - `DB_PORT`: puerto PostgreSQL (default `5432`)
 - `DB_NAME`: nombre de base (default `DentalHubDB`)
@@ -94,7 +96,7 @@ Variables clave:
   - `false` (o no definido): conexión PostgreSQL sin SSL, útil para Docker local
   - `true`: habilita SSL para Neon, Supabase u otros Postgres administrados
 - `DB_SYNCHRONIZE`:
-  - `true` (o no definido): habilita `synchronize` para desarrollo local
+  - `true` (o no definido en desarrollo): habilita `synchronize` para desarrollo local
   - `false`: deshabilita synchronize (recomendado para producción)
 
 Nota: en producción se deben aplicar migraciones SQL y mantener `DB_SYNCHRONIZE=false`.
@@ -104,11 +106,13 @@ Nota: en producción se deben aplicar migraciones SQL y mantener `DB_SYNCHRONIZE
 Este backend puede correr como **Render Web Service Free** y usar una base PostgreSQL externa en Neon o Supabase.
 
 Limitaciones importantes del free tier:
+
 - Render Web Services Free comparten 750 horas mensuales por workspace y hacen spin down tras inactividad.
 - Render permite solo una Render Postgres Free activa por workspace; usar Neon/Supabase evita ese límite.
 - Render Free no conserva archivos locales en `/uploads` después de reinicios, redeploys o spin down. Para archivos persistentes, usar Google Drive u otro storage externo.
 
 Referencias:
+
 - [Render Free](https://render.com/docs/free)
 - [Render Web Services](https://render.com/docs/web-services)
 - [Supabase Postgres](https://supabase.com/docs/guides/database/connecting-to-postgres)
@@ -131,7 +135,7 @@ for file in $(ls src/migrations/*.sql | sort); do
 done
 ```
 
-Usar una `DATABASE_URL` de Neon/Supabase con SSL cuando corresponda, por ejemplo con `sslmode=require`.
+Usar una `DATABASE_URL` de Neon/Supabase con SSL cuando corresponda, por ejemplo con `sslmode=verify-full`.
 
 ### 3. Crear el Web Service en Render
 
@@ -159,16 +163,20 @@ No es necesario configurar `PORT`; Render lo provee y `src/main.ts` ya usa `proc
 
 ```env
 NODE_ENV=production
-DB_HOST=<host-neon-o-supabase>
-DB_PORT=5432
-DB_NAME=<database>
-DB_USERNAME=<user>
-DB_PASSWORD=<password>
+DATABASE_URL=postgresql://<user>:<password>@<host-neon-o-supabase>:5432/<database>?sslmode=verify-full
 DB_SSL=true
 DB_SYNCHRONIZE=false
 JWT_SECRET=<secreto-largo>
 INTEGRATION_TOKEN_ENCRYPTION_KEY=<secreto-largo-o-64-hex>
 HOST_API=https://<tu-servicio>.onrender.com/api
+```
+
+Recomendado para Neon: configurar `DATABASE_URL` copiando la cadena completa desde el dashboard. Si Neon entrega `sslmode=require`, la app lo normaliza a `sslmode=verify-full` para evitar el warning de `pg`. Si se usan variables separadas en lugar de `DATABASE_URL`, pegar `DB_PASSWORD` sin comillas y sin espacios al principio o final.
+
+`JWT_SECRET` es obligatorio en producción. Se puede generar uno con:
+
+```bash
+openssl rand -base64 32
 ```
 
 ### 5. Verificación
@@ -181,6 +189,7 @@ https://<tu-servicio>.onrender.com/api/docs
 ```
 
 ## Scripts
+
 - `pnpm start:dev`: levanta API en modo watch
 - `pnpm start:prod`: ejecuta build en `dist`
 - `pnpm test:e2e`: corre toda la suite e2e
@@ -191,6 +200,7 @@ https://<tu-servicio>.onrender.com/api/docs
 ## Seed de Datos
 
 Endpoint:
+
 - `GET /seed`
 
 Carga datos de prueba (usuarios, clínicas, membresías, pacientes, agenda, facturación, etc.).
@@ -204,6 +214,7 @@ Usuarios seed para login:
 ## Fases Implementadas
 
 ### Fase 1
+
 - Multi-clínica: `clinics`, `clinic_memberships`
 - Scope por clínica vía `x-clinic-id`
 - Respuestas de auth con memberships activas
@@ -219,6 +230,7 @@ Usuarios seed para login:
   - pagos parciales y transición de estado de factura
 
 ### Fase 2
+
 - Historia clínica (`clinical_records`)
 - Notas clínicas (`clinical_notes`)
 - Tratamientos (`treatments`)
@@ -227,6 +239,7 @@ Usuarios seed para login:
 - Validaciones de alcance por clínica en módulos clínicos
 
 ### Fase 3
+
 - Plantillas de mensaje (`message_templates`)
 - Mensajería saliente (`outbound_messages`)
 - Recordatorios (`reminders`)
@@ -286,6 +299,7 @@ pnpm test:e2e
 ```
 
 ## Troubleshooting
+
 - Puerto ocupado (`EADDRINUSE: :::3000`):
 
 ```bash

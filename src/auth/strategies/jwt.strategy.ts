@@ -8,6 +8,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { JwtPayload } from '../interfaces';
 import { User } from '../entities/user.entity';
+import { getRequiredEnv } from '../../config/env';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -17,8 +18,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
     configService: ConfigService,
   ) {
-    const jwtSecret =
-      configService.get<string>('JWT_SECRET') || process.env.JWT_SECRET || '';
+    const jwtSecret = getRequiredEnv(
+      'JWT_SECRET',
+      configService.get<string>('JWT_SECRET') ?? process.env.JWT_SECRET,
+    );
 
     super({
       secretOrKey: jwtSecret,
