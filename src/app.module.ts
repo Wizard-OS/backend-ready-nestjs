@@ -43,6 +43,27 @@ import { NotificationPreferencesModule } from './notification-preferences/notifi
 import { MembershipModule } from './membership/membership.module';
 import { BackofficeModule } from './backoffice/backoffice.module';
 
+function getEnv(name: string): string | undefined {
+  const value = process.env[name]?.trim();
+
+  if (!value) {
+    return undefined;
+  }
+
+  const first = value[0];
+  const last = value[value.length - 1];
+
+  if ((first === '"' && last === '"') || (first === "'" && last === "'")) {
+    return value.slice(1, -1);
+  }
+
+  return value;
+}
+
+function getBooleanEnv(name: string): boolean {
+  return ['1', 'true', 'yes'].includes(getEnv(name)?.toLowerCase() ?? '');
+}
+
 @Module({
   imports: [
     ConfigModule.forRoot(),
@@ -74,19 +95,30 @@ import { BackofficeModule } from './backoffice/backoffice.module';
       });
     })(),
     (() => {
+      const databaseUrl = getEnv('DATABASE_URL');
       const ssl =
-        process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false;
+        getBooleanEnv('DB_SSL') || databaseUrl?.includes('sslmode=require')
+          ? { rejectUnauthorized: false }
+          : false;
+      const synchronize =
+        getEnv('DB_SYNCHRONIZE') === undefined
+          ? getEnv('NODE_ENV') !== 'production'
+          : getEnv('DB_SYNCHRONIZE') !== 'false';
 
       return TypeOrmModule.forRoot({
         type: 'postgres',
-        host: process.env.DB_HOST || '127.0.0.1',
-        port: +(process.env.DB_PORT || 5432),
-        database: process.env.DB_NAME || 'DentalHubDB',
-        username: process.env.DB_USERNAME || 'postgres',
-        password: process.env.DB_PASSWORD || 'postgres',
+        ...(databaseUrl
+          ? { url: databaseUrl }
+          : {
+              host: getEnv('DB_HOST') || '127.0.0.1',
+              port: +(getEnv('DB_PORT') || 5432),
+              database: getEnv('DB_NAME') || 'DentalHubDB',
+              username: getEnv('DB_USERNAME') || 'postgres',
+              password: getEnv('DB_PASSWORD') || 'postgres',
+            }),
         ssl,
         autoLoadEntities: true,
-        synchronize: process.env.DB_SYNCHRONIZE !== 'false',
+        synchronize,
         retryAttempts: 10,
         retryDelay: 3000,
       });
