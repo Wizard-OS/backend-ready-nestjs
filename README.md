@@ -98,6 +98,9 @@ Variables clave:
 - `DB_SYNCHRONIZE`:
   - `true` (o no definido en desarrollo): habilita `synchronize` para desarrollo local
   - `false`: deshabilita synchronize (recomendado para producción)
+- `ENABLE_SEED_ENDPOINT`:
+  - `false` (o no definido): deshabilita el endpoint de seed en producción
+  - `true`: habilita `GET /api/seed` incluso con `NODE_ENV=production` (solo para entornos controlados)
 
 Nota: en producción se deben aplicar migraciones SQL y mantener `DB_SYNCHRONIZE=false`.
 
@@ -166,6 +169,7 @@ NODE_ENV=production
 DATABASE_URL=postgresql://<user>:<password>@<host-neon-o-supabase>:5432/<database>?sslmode=verify-full
 DB_SSL=true
 DB_SYNCHRONIZE=false
+ENABLE_SEED_ENDPOINT=false
 JWT_SECRET=<secreto-largo>
 INTEGRATION_TOKEN_ENCRYPTION_KEY=<secreto-largo-o-64-hex>
 HOST_API=https://<tu-servicio>.onrender.com/api
@@ -201,15 +205,32 @@ https://<tu-servicio>.onrender.com/api/docs
 
 Endpoint:
 
-- `GET /seed`
+- `GET /api/seed`
 
 Carga datos de prueba (usuarios, clínicas, membresías, pacientes, agenda, facturación, etc.).
+En producción queda deshabilitado por defecto cuando `NODE_ENV=production`; solo se registra si `ENABLE_SEED_ENDPOINT=true`.
 
 Usuarios seed para login:
 
 - `test1@google.com` / `Abc123` (admin)
 - `test2@google.com` / `Abc123`
 - `test3@google.com` / `Abc123`
+
+## Reset de Datos en Producción
+
+Antes de vaciar una base remota de Neon o Supabase usada por Render, crear un backup:
+
+```bash
+pg_dump "$DATABASE_URL" --format=custom --file backup-before-reset.dump
+```
+
+Luego ejecutar el script transaccional:
+
+```bash
+psql "$DATABASE_URL" -f scripts/reset-production-data.sql
+```
+
+Este reset conserva el schema y vacía los datos operativos. Después, crear el primer usuario con `POST /api/auth/register` y la clínica inicial con `POST /api/clinics`.
 
 ## Fases Implementadas
 

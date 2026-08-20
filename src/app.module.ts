@@ -44,6 +44,12 @@ import { MembershipModule } from './membership/membership.module';
 import { BackofficeModule } from './backoffice/backoffice.module';
 import { getBooleanEnv, getEnv, normalizeDatabaseUrl } from './config/env';
 
+function isSeedEndpointEnabled() {
+  return (
+    getEnv('NODE_ENV') !== 'production' || getBooleanEnv('ENABLE_SEED_ENDPOINT')
+  );
+}
+
 @Module({
   imports: [
     ConfigModule.forRoot(),
@@ -112,7 +118,7 @@ import { getBooleanEnv, getEnv, normalizeDatabaseUrl } from './config/env';
     MembershipModule,
     ClinicMembershipsModule,
     AuthModule,
-    SeedModule,
+    ...(isSeedEndpointEnabled() ? [SeedModule] : []),
     PatientsModule,
     PatientAssignmentsModule,
     AppointmentsModule,
