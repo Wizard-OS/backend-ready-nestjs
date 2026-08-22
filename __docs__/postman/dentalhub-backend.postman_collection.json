@@ -10,7 +10,7 @@
     "bearer": [
       {
         "key": "token",
-        "value": "{{dentalhubToken}}",
+        "value": "{{token}}",
         "type": "string"
       }
     ]
@@ -25,14 +25,14 @@
           "  pm.collectionVariables.set('baseUrl', 'http://localhost:3000/api');",
           "}",
           "",
-          "const publicPaths = [\"/seed\",\"/auth/login\",\"/auth/register\",\"/help-center/faqs\",\"/help-center/contact\"];",
+          "const publicPaths = [\"/seed\",\"/auth/login\",\"/auth/register\",\"/billing/webhooks/paypal\",\"/help-center/faqs\",\"/help-center/contact\"];",
           "const requestPath = `/${pm.request.url.path.join('/')}`.replace(/^\\/api(?=\\/|$)/, '');",
           "const isPublicRequest = publicPaths.includes(requestPath);",
-          "const token = pm.collectionVariables.get('dentalhubToken') || pm.collectionVariables.get('token');",
+          "const token = pm.environment.get('token') || pm.collectionVariables.get('token');",
           "if (token) {",
           "  pm.request.headers.upsert({ key: 'Authorization', value: `Bearer ${token}` });",
           "} else if (!isPublicRequest) {",
-          "  throw new Error('Falta token. Ejecuta primero Auth / Iniciar sesión y verifica que dentalhubToken tenga valor.');",
+          "  throw new Error('Falta token. Ejecuta primero Auth / Iniciar sesión y verifica que token tenga valor.');",
           "}"
         ]
       }
@@ -46,11 +46,6 @@
     },
     {
       "key": "token",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "dentalhubToken",
       "value": "",
       "type": "string"
     },
@@ -193,6 +188,61 @@
       "key": "patientAssignmentId",
       "value": "",
       "type": "string"
+    },
+    {
+      "key": "entryId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "billingInterval",
+      "value": "monthly",
+      "type": "string"
+    },
+    {
+      "key": "paypalSubscriptionId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "paypalApprovalUrl",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "paypalWebhookEventId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "paypalTransmissionId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "paypalTransmissionTime",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "paypalTransmissionSig",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "paypalCertUrl",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "paypalAuthAlgo",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "paypalProviderStatus",
+      "value": "",
+      "type": "string"
     }
   ],
   "item": [
@@ -321,17 +371,24 @@
                   "const json = pm.response.json();",
                   "const auth = json.data || json;",
                   "const token = auth.token || auth.accessToken || auth.jwt;",
+                  "const hasEnvironment = Boolean(pm.environment && pm.environment.name);",
+                  "function setDentalHubVariable(key, value) {",
+                  "  pm.collectionVariables.set(key, value);",
+                  "  if (hasEnvironment) pm.environment.set(key, value);",
+                  "}",
+                  "function getDentalHubVariable(key) {",
+                  "  return (hasEnvironment ? pm.environment.get(key) : undefined) || pm.collectionVariables.get(key);",
+                  "}",
                   "pm.test('Login devuelve token', function () { pm.expect(token, 'token').to.be.a('string').and.not.empty; });",
                   "if (token) {",
-                  "  pm.collectionVariables.set('token', token);",
-                  "  pm.collectionVariables.set('dentalhubToken', token);",
+                  "  setDentalHubVariable('token', token);",
                   "}",
-                  "if (auth.id) pm.collectionVariables.set('currentUserId', auth.id);",
-                  "if (!pm.collectionVariables.get('clinicId') && Array.isArray(auth.memberships) && auth.memberships.length) {",
-                  "  pm.collectionVariables.set('clinicId', auth.memberships[0].clinicId);",
+                  "if (auth.id) setDentalHubVariable('currentUserId', auth.id);",
+                  "if (!getDentalHubVariable('clinicId') && Array.isArray(auth.memberships) && auth.memberships.length) {",
+                  "  setDentalHubVariable('clinicId', auth.memberships[0].clinicId);",
                   "}",
-                  "if (!pm.collectionVariables.get('clinicMembershipId') && Array.isArray(auth.memberships) && auth.memberships.length) {",
-                  "  pm.collectionVariables.set('clinicMembershipId', auth.memberships[0].membershipId);",
+                  "if (!getDentalHubVariable('clinicMembershipId') && Array.isArray(auth.memberships) && auth.memberships.length) {",
+                  "  setDentalHubVariable('clinicMembershipId', auth.memberships[0].membershipId);",
                   "}"
                 ]
               }
@@ -2010,6 +2067,94 @@
       ]
     },
     {
+      "name": "Billing",
+      "item": [
+        {
+          "name": "Create Premium Checkout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/billing/checkout",
+              "host": ["{{baseUrl}}"],
+              "path": ["billing", "checkout"]
+            },
+            "description": "Crear checkout de suscripción Premium con PayPal",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"planCode\": \"free\",\n  \"interval\": \"monthly\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Checkout creado', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "if (json.providerSubscriptionId) {",
+                  "  pm.collectionVariables.set('paypalSubscriptionId', json.providerSubscriptionId);",
+                  "}",
+                  "if (json.approvalUrl) {",
+                  "  pm.collectionVariables.set('paypalApprovalUrl', json.approvalUrl);",
+                  "}",
+                  "if (json.providerStatus) {",
+                  "  pm.collectionVariables.set('paypalProviderStatus', json.providerStatus);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PayPal Webhook",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/billing/webhooks/paypal",
+              "host": ["{{baseUrl}}"],
+              "path": ["billing", "webhooks", "paypal"]
+            },
+            "description": "Recibir webhooks de PayPal Billing"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Webhook recibido o rechazado por firma', function () {",
+                  "  pm.expect([201, 400, 401]).to.include(pm.response.code);",
+                  "});",
+                  "",
+                  "try {",
+                  "  const json = pm.response.json();",
+                  "  if (json.eventId) pm.collectionVariables.set('paypalWebhookEventId', json.eventId);",
+                  "} catch (error) {}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "Clinic Memberships",
       "item": [
         {
@@ -2493,6 +2638,122 @@
       ]
     },
     {
+      "name": "Integrations",
+      "item": [
+        {
+          "name": "Desconectar Google Drive",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/integrations/google-drive/disconnect",
+              "host": ["{{baseUrl}}"],
+              "path": ["integrations", "google-drive", "disconnect"]
+            },
+            "description": "Desconectar Google Drive"
+          }
+        },
+        {
+          "name": "Generar URL OAuth de Google Drive",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/integrations/google-drive/oauth-url?redirectUri={{redirectUri}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["integrations", "google-drive", "oauth-url"],
+              "query": [
+                {
+                  "key": "redirectUri",
+                  "value": "{{redirectUri}}",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "Generar URL OAuth de Google Drive"
+          }
+        },
+        {
+          "name": "Obtener estado de integración Google Drive",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/integrations/google-drive/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["integrations", "google-drive", "status"]
+            },
+            "description": "Obtener estado de integración Google Drive"
+          }
+        },
+        {
+          "name": "Conectar Google Drive con código OAuth",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/integrations/google-drive/oauth-callback",
+              "host": ["{{baseUrl}}"],
+              "path": ["integrations", "google-drive", "oauth-callback"]
+            },
+            "description": "Conectar Google Drive con código OAuth",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"{{code}}\",\n  \"redirectUri\": \"https://app.dentalhub.example/integrations/google-drive/callback\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Sincronizar archivos desde Google Drive",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/integrations/google-drive/sync",
+              "host": ["{{baseUrl}}"],
+              "path": ["integrations", "google-drive", "sync"]
+            },
+            "description": "Sincronizar archivos desde Google Drive"
+          }
+        }
+      ]
+    },
+    {
       "name": "Invoices",
       "item": [
         {
@@ -2761,6 +3022,31 @@
       "name": "Odontogram",
       "item": [
         {
+          "name": "Eliminar registro del odontograma",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/patients/{{patientId}}/odontogram/entries/{{entryId}}",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "patients",
+                "{{patientId}}",
+                "odontogram",
+                "entries",
+                "{{entryId}}"
+              ]
+            },
+            "description": "Eliminar registro del odontograma"
+          }
+        },
+        {
           "name": "Obtener odontograma actual del paciente",
           "request": {
             "method": "GET",
@@ -2804,7 +3090,35 @@
             "description": "Actualizar estado de una pieza dental",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"status\": \"caries\",\n  \"observation\": \"Lesión oclusal visible\",\n  \"clinicalNoteId\": \"{{clinicalNoteId}}\",\n  \"treatmentId\": \"{{treatmentId}}\"\n}",
+              "raw": "{\n  \"status\": \"caries\",\n  \"surfaces\": [\n    \"occlusal\"\n  ],\n  \"observation\": \"Lesión oclusal visible\",\n  \"description\": \"Caries inicial en fosa central\",\n  \"treatmentType\": \"Restauración de resina\",\n  \"clinicalNoteId\": \"{{clinicalNoteId}}\",\n  \"treatmentId\": \"{{treatmentId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Generar y guardar PDF del odontograma",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/patients/{{patientId}}/odontogram/pdf",
+              "host": ["{{baseUrl}}"],
+              "path": ["patients", "{{patientId}}", "odontogram", "pdf"]
+            },
+            "description": "Generar y guardar PDF del odontograma",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"appointmentId\": \"{{appointmentId}}\",\n  \"clinicalNoteId\": \"{{clinicalNoteId}}\",\n  \"treatmentId\": \"{{treatmentId}}\",\n  \"description\": \"Odontograma inicial exportado\"\n}",
               "options": {
                 "raw": {
                   "language": "json"

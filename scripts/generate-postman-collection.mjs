@@ -23,7 +23,6 @@ const HTTP_METHODS = new Set([
 const REQUIRED_VARIABLES = [
   ['baseUrl', 'http://localhost:3000/api'],
   ['token', ''],
-  ['dentalhubToken', ''],
   ['clinicId', ''],
   ['clinicMainId', ''],
   ['clinicEastId', ''],
@@ -52,12 +51,22 @@ const REQUIRED_VARIABLES = [
   ['patientAssignmentId', ''],
   ['userSessionId', ''],
   ['supportRequestId', ''],
+  ['billingInterval', 'monthly'],
+  ['paypalSubscriptionId', ''],
+  ['paypalApprovalUrl', ''],
+  ['paypalWebhookEventId', ''],
+  ['paypalTransmissionId', ''],
+  ['paypalTransmissionTime', ''],
+  ['paypalTransmissionSig', ''],
+  ['paypalCertUrl', ''],
+  ['paypalAuthAlgo', ''],
 ];
 
 const PUBLIC_PATHS = new Set([
   '/seed',
   '/auth/login',
   '/auth/register',
+  '/billing/webhooks/paypal',
   '/help-center/faqs',
   '/help-center/contact',
 ]);
@@ -257,11 +266,11 @@ function collectionPrerequestEvent() {
         `const publicPaths = ${JSON.stringify([...PUBLIC_PATHS])};`,
         "const requestPath = `/${pm.request.url.path.join('/')}`.replace(/^\\/api(?=\\/|$)/, '');",
         'const isPublicRequest = publicPaths.includes(requestPath);',
-        "const token = pm.collectionVariables.get('dentalhubToken') || pm.collectionVariables.get('token');",
+        "const token = pm.environment.get('token') || pm.collectionVariables.get('token');",
         'if (token) {',
         "  pm.request.headers.upsert({ key: 'Authorization', value: `Bearer ${token}` });",
         '} else if (!isPublicRequest) {',
-        "  throw new Error('Falta token. Ejecuta primero Auth / Iniciar sesión y verifica que dentalhubToken tenga valor.');",
+        "  throw new Error('Falta token. Ejecuta primero Auth / Iniciar sesión y verifica que token tenga valor.');",
         '}',
       ],
     },
@@ -274,7 +283,7 @@ function bearerAuth() {
     bearer: [
       {
         key: 'token',
-        value: '{{dentalhubToken}}',
+        value: '{{token}}',
         type: 'string',
       },
     ],
