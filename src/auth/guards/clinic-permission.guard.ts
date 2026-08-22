@@ -6,10 +6,10 @@ import {
   Injectable,
 } from '@nestjs/common';
 
-import { ClinicPermission } from '../interfaces/clinic-permission.enum';
-import { ClinicMembershipRole } from '../../clinic-memberships/interfaces/clinic-membership-role.enum';
-import { META_CLINIC_PERMISSIONS } from '../decorators/clinic-permissions.decorator';
+import { ClinicPermission } from '../interfaces';
 import { hasClinicPermission } from '../utils/clinic-permissions';
+import { META_CLINIC_PERMISSIONS } from '../decorators/clinic-permissions.decorator';
+import { ClinicMembershipRole } from '../../clinic-memberships/interfaces/clinic-membership-role.enum';
 
 @Injectable()
 export class ClinicPermissionGuard implements CanActivate {
