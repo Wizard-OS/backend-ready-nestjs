@@ -435,7 +435,7 @@ export class GoogleDriveIntegrationService {
       webViewLink: file.webViewLink ?? null,
       webContentLink: file.webContentLink ?? null,
       parents: file.parents ?? [],
-      appProperties: (file.appProperties ?? {}) as Record<string, string>,
+      appProperties: file.appProperties ?? {},
     };
   }
 

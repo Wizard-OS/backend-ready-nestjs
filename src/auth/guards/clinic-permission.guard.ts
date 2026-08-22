@@ -26,8 +26,7 @@ export class ClinicPermissionGuard implements CanActivate {
     const req = context.switchToHttp().getRequest();
     const role = req.clinicMembershipRole as ClinicMembershipRole | undefined;
     const permissionsJson = req.clinicPermissions as
-      | Record<string, boolean>
-      | undefined;
+      Record<string, boolean> | undefined;
 
     const allowed = permissions.every((permission) =>
       hasClinicPermission(role, permissionsJson, permission),

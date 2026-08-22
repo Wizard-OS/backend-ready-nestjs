@@ -73,9 +73,7 @@ export class PayPalBillingProvider implements BillingProviderAdapter {
     );
 
     if (!subscription.id) {
-      throw new BadRequestException(
-        'PayPal did not return a subscription id',
-      );
+      throw new BadRequestException('PayPal did not return a subscription id');
     }
 
     const approvalUrl = subscription.links?.find(

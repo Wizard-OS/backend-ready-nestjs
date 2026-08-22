@@ -74,7 +74,8 @@ export class BillingService {
     }
 
     const event = this.asWebhookPayload(payload);
-    const eventId = event.id ?? this.getHeader(headers, 'paypal-transmission-id');
+    const eventId =
+      event.id ?? this.getHeader(headers, 'paypal-transmission-id');
     const eventType = event.event_type;
 
     if (!eventId || !eventType) {
@@ -252,7 +253,7 @@ export class BillingService {
       throw new BadRequestException('Webhook payload must be an object');
     }
 
-    return payload as ProviderWebhookPayload;
+    return payload;
   }
 
   private extractProviderSubscriptionId(event: ProviderWebhookPayload) {

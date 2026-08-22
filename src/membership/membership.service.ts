@@ -485,9 +485,7 @@ export class MembershipService {
       getEnv('JWT_SECRET') ??
       'development_license_hash_secret';
 
-    return createHash('sha256')
-      .update(`${secret}:${licenseKey}`)
-      .digest('hex');
+    return createHash('sha256').update(`${secret}:${licenseKey}`).digest('hex');
   }
 
   private assertLimitAvailable(
