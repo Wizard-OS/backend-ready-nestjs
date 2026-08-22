@@ -11,6 +11,7 @@ import {
 
 import { Clinic } from '../../clinics/entities/clinic.entity';
 import { ClinicMembership } from '../../clinic-memberships/entities/clinic-membership.entity';
+import { BillingProvider } from '../interfaces/billing-provider.enum';
 import { MembershipPlanCode } from '../interfaces/membership-plan-code.enum';
 import { SubscriptionStatus } from '../interfaces/subscription-status.enum';
 
@@ -52,6 +53,46 @@ export class ClinicSubscription {
 
   @Column('timestamptz', { nullable: true })
   currentPeriodEnd: Date | null;
+
+  @Column('enum', {
+    enum: BillingProvider,
+    enumName: 'clinic_subscriptions_billingprovider_enum',
+    nullable: true,
+  })
+  billingProvider: BillingProvider | null;
+
+  @Column('text', { nullable: true })
+  providerCustomerId: string | null;
+
+  @Column('text', { nullable: true })
+  providerSubscriptionId: string | null;
+
+  @Column('text', { nullable: true })
+  providerPlanId: string | null;
+
+  @Column('text', { nullable: true })
+  providerStatus: string | null;
+
+  @Column('text', { nullable: true })
+  licenseKeyHash: string | null;
+
+  @Column('text', { nullable: true })
+  licenseKeySuffix: string | null;
+
+  @Column('timestamptz', { nullable: true })
+  licenseIssuedAt: Date | null;
+
+  @Column('timestamptz', { nullable: true })
+  licenseActivatedAt: Date | null;
+
+  @Column('bool', { default: false })
+  cancelAtPeriodEnd: boolean;
+
+  @Column('text', { nullable: true })
+  lastWebhookEventId: string | null;
+
+  @Column('timestamptz', { nullable: true })
+  lastWebhookProcessedAt: Date | null;
 
   @ManyToOne(() => ClinicMembership, { onDelete: 'SET NULL' })
   @JoinColumn({ name: 'assignedByMembershipId' })

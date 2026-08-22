@@ -1,13 +1,16 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { createHash, randomBytes } from 'crypto';
 import { Repository } from 'typeorm';
 
 import { ClinicMembership } from '../clinic-memberships/entities/clinic-membership.entity';
 import { ClinicMembershipRole } from '../clinic-memberships/interfaces/clinic-membership-role.enum';
 import { PatientFile } from '../patient-files/entities/patient-file.entity';
 import { Patient } from '../patients/entities/patient.entity';
+import { getEnv } from '../config/env';
 import { ClinicSubscription } from './entities/clinic-subscription.entity';
 import { ClinicSubscriptionAuditLog } from './entities/clinic-subscription-audit-log.entity';
+import { BillingProvider } from './interfaces/billing-provider.enum';
 import { MembershipPlanCode } from './interfaces/membership-plan-code.enum';
 import { SubscriptionStatus } from './interfaces/subscription-status.enum';
 
@@ -19,6 +22,36 @@ interface MembershipLimits {
   activePatients: LimitValue;
   storageBytes: LimitValue;
   messagingCreditsMonthlyIncluded: LimitValue;
+}
+
+interface BeginProviderSubscriptionInput {
+  clinicId: string;
+  provider: BillingProvider;
+  providerSubscriptionId: string;
+  providerPlanId: string;
+  providerStatus: string;
+}
+
+interface ActivateProviderSubscriptionInput {
+  clinicId?: string;
+  provider: BillingProvider;
+  providerSubscriptionId: string;
+  providerPlanId?: string | null;
+  providerCustomerId?: string | null;
+  providerStatus?: string | null;
+  currentPeriodStart?: Date | null;
+  currentPeriodEnd?: Date | null;
+  webhookEventId?: string | null;
+}
+
+interface MarkProviderSubscriptionInput {
+  provider: BillingProvider;
+  providerSubscriptionId: string;
+  status: SubscriptionStatus;
+  providerStatus?: string | null;
+  cancelAtPeriodEnd?: boolean;
+  currentPeriodEnd?: Date | null;
+  webhookEventId?: string | null;
 }
 
 const PLAN_VERSION = '2026-08-mvp';
@@ -82,15 +115,30 @@ export class MembershipService {
 
   async getCurrent(clinicId: string) {
     const subscription = await this.ensureSubscription(clinicId);
-    const limits = PLAN_LIMITS[subscription.planCode];
+    const effectivePlanCode = this.getEffectivePlanCode(subscription);
+    const limits = PLAN_LIMITS[effectivePlanCode];
     const usage = await this.getUsage(clinicId);
 
     return {
       plan: {
         code: subscription.planCode,
+        effectiveCode: effectivePlanCode,
         version: subscription.planVersion,
       },
       status: subscription.status,
+      billing: {
+        provider: subscription.billingProvider,
+        providerStatus: subscription.providerStatus,
+        providerSubscriptionId: subscription.providerSubscriptionId,
+        currentPeriodStart: subscription.currentPeriodStart,
+        currentPeriodEnd: subscription.currentPeriodEnd,
+        cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
+      },
+      license: {
+        issuedAt: subscription.licenseIssuedAt,
+        activatedAt: subscription.licenseActivatedAt,
+        suffix: subscription.licenseKeySuffix,
+      },
       limits,
       usage,
       warnings: this.buildWarnings(limits, usage),
@@ -115,6 +163,114 @@ export class MembershipService {
     reason?: string,
   ) {
     return this.assignPlan(clinicId, null, planCode, reason);
+  }
+
+  async beginProviderSubscription(input: BeginProviderSubscriptionInput) {
+    const subscription = await this.ensureSubscription(input.clinicId);
+
+    subscription.billingProvider = input.provider;
+    subscription.providerSubscriptionId = input.providerSubscriptionId;
+    subscription.providerPlanId = input.providerPlanId;
+    subscription.providerStatus = input.providerStatus;
+    subscription.status = SubscriptionStatus.incomplete;
+    subscription.cancelAtPeriodEnd = false;
+    subscription.changeReason = `Checkout started through ${input.provider}`;
+
+    await this.subscriptionRepository.save(subscription);
+
+    return this.getCurrent(input.clinicId);
+  }
+
+  async activateProviderSubscription(input: ActivateProviderSubscriptionInput) {
+    const subscription = await this.findProviderSubscription(
+      input.provider,
+      input.providerSubscriptionId,
+      input.clinicId,
+    );
+    const previousPlanCode = subscription.planCode;
+    const now = new Date();
+    const licenseKey = subscription.licenseKeyHash
+      ? null
+      : this.generateLicenseKey();
+
+    subscription.planCode = MembershipPlanCode.premium;
+    subscription.planVersion = PLAN_VERSION;
+    subscription.status = SubscriptionStatus.active;
+    subscription.billingProvider = input.provider;
+    subscription.providerSubscriptionId = input.providerSubscriptionId;
+    subscription.providerPlanId =
+      input.providerPlanId ?? subscription.providerPlanId;
+    subscription.providerCustomerId =
+      input.providerCustomerId ?? subscription.providerCustomerId;
+    subscription.providerStatus =
+      input.providerStatus ?? subscription.providerStatus;
+    subscription.currentPeriodStart =
+      input.currentPeriodStart ?? subscription.currentPeriodStart ?? now;
+    subscription.currentPeriodEnd =
+      input.currentPeriodEnd ?? subscription.currentPeriodEnd;
+    subscription.cancelAtPeriodEnd = false;
+    subscription.lastWebhookEventId =
+      input.webhookEventId ?? subscription.lastWebhookEventId;
+    subscription.lastWebhookProcessedAt = now;
+    subscription.changeReason = `Subscription activated through ${input.provider}`;
+
+    if (licenseKey) {
+      subscription.licenseKeyHash = this.hashLicenseKey(licenseKey);
+      subscription.licenseKeySuffix = licenseKey.slice(-4);
+      subscription.licenseIssuedAt = now;
+      subscription.licenseActivatedAt = now;
+    }
+
+    await this.subscriptionRepository.save(subscription);
+
+    if (previousPlanCode !== MembershipPlanCode.premium) {
+      await this.auditLogRepository.save(
+        this.auditLogRepository.create({
+          clinicId: subscription.clinicId,
+          previousPlanCode,
+          nextPlanCode: MembershipPlanCode.premium,
+          changedByMembershipId: null,
+          reason: `Activated by ${input.provider} subscription ${input.providerSubscriptionId}`,
+        }),
+      );
+    }
+
+    return {
+      clinicId: subscription.clinicId,
+      membership: await this.getCurrent(subscription.clinicId),
+      issuedLicenseKey: licenseKey,
+    };
+  }
+
+  async markProviderSubscription(input: MarkProviderSubscriptionInput) {
+    const subscription = await this.findProviderSubscription(
+      input.provider,
+      input.providerSubscriptionId,
+    );
+
+    subscription.status = input.status;
+    subscription.providerStatus =
+      input.providerStatus ?? subscription.providerStatus;
+    subscription.cancelAtPeriodEnd =
+      input.cancelAtPeriodEnd ?? subscription.cancelAtPeriodEnd;
+    subscription.currentPeriodEnd =
+      input.currentPeriodEnd ?? subscription.currentPeriodEnd;
+    subscription.lastWebhookEventId =
+      input.webhookEventId ?? subscription.lastWebhookEventId;
+    subscription.lastWebhookProcessedAt = new Date();
+
+    if (
+      [SubscriptionStatus.canceled, SubscriptionStatus.expired].includes(
+        input.status,
+      )
+    ) {
+      subscription.planCode = MembershipPlanCode.free;
+      subscription.changeReason = `Subscription ended through ${input.provider}`;
+    }
+
+    await this.subscriptionRepository.save(subscription);
+
+    return this.getCurrent(subscription.clinicId);
   }
 
   private async assignPlan(
@@ -206,6 +362,30 @@ export class MembershipService {
     );
   }
 
+  private async findProviderSubscription(
+    provider: BillingProvider,
+    providerSubscriptionId: string,
+    clinicId?: string,
+  ) {
+    const existing = await this.subscriptionRepository.findOne({
+      where: { billingProvider: provider, providerSubscriptionId },
+    });
+
+    if (existing) return existing;
+
+    if (!clinicId) {
+      throw new BadRequestException(
+        'Subscription not found for provider event',
+      );
+    }
+
+    const subscription = await this.ensureSubscription(clinicId);
+    subscription.billingProvider = provider;
+    subscription.providerSubscriptionId = providerSubscriptionId;
+
+    return subscription;
+  }
+
   isProfessionalRole(role: ClinicMembershipRole): boolean {
     return [
       ClinicMembershipRole.odontologist,
@@ -277,6 +457,37 @@ export class MembershipService {
       },
       {} as Record<string, { at80Percent: boolean; blocked: boolean }>,
     );
+  }
+
+  private getEffectivePlanCode(subscription: ClinicSubscription) {
+    if (
+      [SubscriptionStatus.active, SubscriptionStatus.trialing].includes(
+        subscription.status,
+      )
+    ) {
+      return subscription.planCode;
+    }
+
+    return MembershipPlanCode.free;
+  }
+
+  private generateLicenseKey() {
+    const segments = Array.from({ length: 3 }, () =>
+      randomBytes(3).toString('hex').toUpperCase(),
+    );
+
+    return ['DH', 'PREM', ...segments].join('-');
+  }
+
+  private hashLicenseKey(licenseKey: string) {
+    const secret =
+      getEnv('LICENSE_HASH_SECRET') ??
+      getEnv('JWT_SECRET') ??
+      'development_license_hash_secret';
+
+    return createHash('sha256')
+      .update(`${secret}:${licenseKey}`)
+      .digest('hex');
   }
 
   private assertLimitAvailable(

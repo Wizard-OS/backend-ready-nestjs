@@ -41,6 +41,7 @@ import { TreatmentSessionsModule } from './treatment-sessions/treatment-sessions
 import { ClinicMembershipsModule } from './clinic-memberships/clinic-memberships.module';
 import { NotificationPreferencesModule } from './notification-preferences/notification-preferences.module';
 import { MembershipModule } from './membership/membership.module';
+import { BillingModule } from './billing/billing.module';
 import { BackofficeModule } from './backoffice/backoffice.module';
 import { getBooleanEnv, getEnv, normalizeDatabaseUrl } from './config/env';
 
@@ -116,6 +117,7 @@ function isSeedEndpointEnabled() {
     BackofficeModule,
     ClinicsModule,
     MembershipModule,
+    BillingModule,
     ClinicMembershipsModule,
     AuthModule,
     ...(isSeedEndpointEnabled() ? [SeedModule] : []),
