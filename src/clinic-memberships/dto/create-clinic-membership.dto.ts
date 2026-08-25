@@ -27,8 +27,13 @@ export class CreateClinicMembershipDto {
   role: ClinicMembershipRole;
 
   @ApiPropertyOptional({
-    example: { canEdit: true },
-    description: 'Permisos personalizados en JSON',
+    example: {
+      canManagePatients: true,
+      canViewPatientContact: true,
+      canManageClinical: true,
+      canManageSchedule: true,
+    },
+    description: 'Permisos granulares personalizados en JSON',
   })
   @IsObject()
   @IsOptional()

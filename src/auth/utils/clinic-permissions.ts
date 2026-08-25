@@ -1,5 +1,5 @@
+import { ClinicPermission } from '../interfaces';
 import { ClinicMembershipRole } from '../../clinic-memberships/interfaces/clinic-membership-role.enum';
-import { ClinicPermission } from '../interfaces/clinic-permission.enum';
 
 export type ClinicPermissionMap = Partial<Record<ClinicPermission, boolean>> &
   Record<string, boolean | undefined>;
@@ -34,7 +34,7 @@ const defaultPermissionsByRole: Record<
   [ClinicMembershipRole.odontologist]: {
     [ClinicPermission.manageClinic]: false,
     [ClinicPermission.manageTeam]: false,
-    [ClinicPermission.managePatients]: false,
+    [ClinicPermission.managePatients]: true,
     [ClinicPermission.viewPatientContact]: false,
     [ClinicPermission.manageSchedule]: false,
     [ClinicPermission.manageClinical]: true,
@@ -85,9 +85,9 @@ export function hasClinicPermission(
   if (!role) return false;
 
   const explicit = permissionsJson?.[permission];
-  if (explicit !== undefined) return explicit === true;
+  if (explicit !== undefined) return explicit;
 
-  return defaultPermissionsByRole[role]?.[permission] === true;
+  return defaultPermissionsByRole[role]?.[permission];
 }
 
 export function resolveClinicPermissions(

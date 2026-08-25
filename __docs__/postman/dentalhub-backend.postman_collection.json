@@ -486,7 +486,7 @@
             "description": "Crear membresía de clínica",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"clinicId\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n  \"userId\": \"f1e2d3c4-b5a6-7890-abcd-ef1234567890\",\n  \"role\": \"odontologist\",\n  \"permissionsJson\": {\n    \"canEdit\": true\n  }\n}",
+              "raw": "{\n  \"clinicId\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n  \"userId\": \"f1e2d3c4-b5a6-7890-abcd-ef1234567890\",\n  \"role\": \"odontologist\",\n  \"permissionsJson\": {\n    \"canManagePatients\": true,\n    \"canViewPatientContact\": true,\n    \"canManageClinical\": true,\n    \"canManageSchedule\": true\n  }\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -2214,7 +2214,7 @@
             "description": "Actualizar membresía",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"clinicId\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n  \"userId\": \"f1e2d3c4-b5a6-7890-abcd-ef1234567890\",\n  \"role\": \"odontologist\",\n  \"permissionsJson\": {\n    \"canEdit\": true\n  },\n  \"isActive\": true\n}",
+              "raw": "{\n  \"clinicId\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n  \"userId\": \"f1e2d3c4-b5a6-7890-abcd-ef1234567890\",\n  \"role\": \"odontologist\",\n  \"permissionsJson\": {\n    \"canManagePatients\": true,\n    \"canViewPatientContact\": true,\n    \"canManageClinical\": true,\n    \"canManageSchedule\": true\n  },\n  \"isActive\": true\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -2473,22 +2473,22 @@
                 {
                   "key": "from",
                   "value": "{{from}}",
-                  "disabled": false
+                  "disabled": true
                 },
                 {
                   "key": "to",
                   "value": "{{to}}",
-                  "disabled": false
+                  "disabled": true
                 },
                 {
                   "key": "status",
                   "value": "pending",
-                  "disabled": false
+                  "disabled": true
                 },
                 {
                   "key": "professionalMembershipId",
                   "value": "{{professionalMembershipId}}",
-                  "disabled": false
+                  "disabled": true
                 }
               ]
             },
@@ -2514,12 +2514,12 @@
                 {
                   "key": "from",
                   "value": "{{from}}",
-                  "disabled": false
+                  "disabled": true
                 },
                 {
                   "key": "to",
                   "value": "{{to}}",
-                  "disabled": false
+                  "disabled": true
                 }
               ]
             },

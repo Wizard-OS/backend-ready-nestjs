@@ -12,9 +12,12 @@ describe('Phase 1 Flow (e2e)', () => {
   let adminUserId: string;
   let doctorToken: string;
   let doctorUserId: string;
+  let assistantToken: string;
+  let assistantUserId: string;
   let clinicId: string;
   let membershipId: string;
   let doctorMembershipId: string;
+  let assistantMembershipId: string;
   let patientId: string;
   let patientDocumentId: string;
   let appointmentTypeId: string;
@@ -58,6 +61,19 @@ describe('Phase 1 Flow (e2e)', () => {
 
     doctorToken = doctorLoginResponse.body.token;
     doctorUserId = doctorLoginResponse.body.id;
+
+    const assistantResponse = await request(app.getHttpServer())
+      .post('/auth/register')
+      .send({
+        email: `assistant_${Date.now()}@example.com`,
+        password: 'Abc123',
+        firstName: 'Asistente',
+        lastName: 'Dental',
+      })
+      .expect(201);
+
+    assistantToken = assistantResponse.body.token;
+    assistantUserId = assistantResponse.body.id;
   });
 
   afterAll(async () => {
@@ -111,6 +127,29 @@ describe('Phase 1 Flow (e2e)', () => {
       .expect(201);
 
     doctorMembershipId = doctorMembershipResponse.body.id;
+
+    await request(app.getHttpServer())
+      .patch('/membership/manual')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .set('x-clinic-id', clinicId)
+      .send({
+        planCode: 'premium',
+        reason: 'Allow assistant membership for patient access regressions',
+      })
+      .expect(200);
+
+    const assistantMembershipResponse = await request(app.getHttpServer())
+      .post('/clinic-memberships')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .set('x-clinic-id', clinicId)
+      .send({
+        clinicId,
+        userId: assistantUserId,
+        role: 'assistant',
+      })
+      .expect(201);
+
+    assistantMembershipId = assistantMembershipResponse.body.id;
   });
 
   it('creates patient, appointment type and appointment in clinic scope', async () => {
@@ -181,7 +220,23 @@ describe('Phase 1 Flow (e2e)', () => {
     appointmentId = appointmentResponse.body.id;
   });
 
-  it('restricts secondary professionals to assigned patients without contact data', async () => {
+  it('allows odontologists to create and list patients without contact data', async () => {
+    const doctorCreatedPatient = await request(app.getHttpServer())
+      .post('/patients/create')
+      .set('Authorization', `Bearer ${doctorToken}`)
+      .set('x-clinic-id', clinicId)
+      .send({
+        clinicId,
+        email: `doctor_patient_${Date.now()}@example.com`,
+        firstName: 'Paciente',
+        lastName: 'Doctor',
+        documentId: `UY-DOCTOR-${Date.now()}`,
+        birthDate: '1989-04-10',
+        gender: 'Other',
+        phone: `+5986${Date.now().toString().slice(-8)}`,
+      })
+      .expect(201);
+
     const hiddenPatientResponse = await request(app.getHttpServer())
       .post('/patients/create')
       .set('Authorization', `Bearer ${adminToken}`)
@@ -201,14 +256,19 @@ describe('Phase 1 Flow (e2e)', () => {
       .expect(201);
 
     await request(app.getHttpServer())
-      .post('/patient-assignments')
-      .set('Authorization', `Bearer ${adminToken}`)
+      .post('/patients/create')
+      .set('Authorization', `Bearer ${assistantToken}`)
       .set('x-clinic-id', clinicId)
       .send({
-        patientId,
-        professionalMembershipId: doctorMembershipId,
+        clinicId,
+        email: `assistant_patient_${Date.now()}@example.com`,
+        firstName: 'Paciente',
+        lastName: 'Asistente',
+        documentId: `UY-ASSISTANT-${Date.now()}`,
+        birthDate: '1992-07-15',
+        gender: 'Other',
       })
-      .expect(201);
+      .expect(403);
 
     const doctorPatients = await request(app.getHttpServer())
       .get('/patients')
@@ -225,20 +285,36 @@ describe('Phase 1 Flow (e2e)', () => {
           address: null,
           emergencyContact: null,
         }),
+        expect.objectContaining({
+          id: doctorCreatedPatient.body.id,
+          phone: null,
+          email: null,
+        }),
+        expect.objectContaining({
+          id: hiddenPatientResponse.body.id,
+          phone: null,
+          email: null,
+          address: null,
+          emergencyContact: null,
+        }),
       ]),
     );
-    expect(
-      doctorPatients.body.some(
-        (patient: { id: string }) =>
-          patient.id === hiddenPatientResponse.body.id,
-      ),
-    ).toBe(false);
 
-    await request(app.getHttpServer())
+    const hiddenPatientForDoctor = await request(app.getHttpServer())
       .get(`/patients/${hiddenPatientResponse.body.id}`)
       .set('Authorization', `Bearer ${doctorToken}`)
       .set('x-clinic-id', clinicId)
-      .expect(403);
+      .expect(200);
+
+    expect(hiddenPatientForDoctor.body).toEqual(
+      expect.objectContaining({
+        id: hiddenPatientResponse.body.id,
+        phone: null,
+        email: null,
+        address: null,
+        emergencyContact: null,
+      }),
+    );
 
     await request(app.getHttpServer())
       .get('/common/reports/income')
@@ -274,7 +350,7 @@ describe('Phase 1 Flow (e2e)', () => {
         clinicId,
         patientId: temporaryPatient.body.id,
         appointmentTypeId,
-        professionalMembershipId: doctorMembershipId,
+        professionalMembershipId: assistantMembershipId,
         description: 'Acceso temporal',
         startTime: startAt.toISOString(),
         endTime: endAt.toISOString(),
@@ -283,7 +359,7 @@ describe('Phase 1 Flow (e2e)', () => {
 
     await request(app.getHttpServer())
       .get(`/patients/${temporaryPatient.body.id}`)
-      .set('Authorization', `Bearer ${doctorToken}`)
+      .set('Authorization', `Bearer ${assistantToken}`)
       .set('x-clinic-id', clinicId)
       .expect(200);
 
@@ -296,7 +372,7 @@ describe('Phase 1 Flow (e2e)', () => {
 
     await request(app.getHttpServer())
       .get(`/patients/${temporaryPatient.body.id}`)
-      .set('Authorization', `Bearer ${doctorToken}`)
+      .set('Authorization', `Bearer ${assistantToken}`)
       .set('x-clinic-id', clinicId)
       .expect(403);
   });
