@@ -89,16 +89,3 @@ export function hasClinicPermission(
 
   return defaultPermissionsByRole[role]?.[permission];
 }
-
-export function resolveClinicPermissions(
-  role: ClinicMembershipRole | undefined,
-  permissionsJson: ClinicPermissionMap | undefined,
-): Record<ClinicPermission, boolean> {
-  return Object.values(ClinicPermission).reduce(
-    (acc, permission) => ({
-      ...acc,
-      [permission]: hasClinicPermission(role, permissionsJson, permission),
-    }),
-    {} as Record<ClinicPermission, boolean>,
-  );
-}
