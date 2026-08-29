@@ -13,6 +13,8 @@ import { CreateClinicDto } from './dto/create-clinic.dto';
 import { UpdateClinicDto } from './dto/update-clinic.dto';
 import { ClinicMembership } from '../clinic-memberships/entities/clinic-membership.entity';
 import { ClinicMembershipRole } from '../clinic-memberships/interfaces/clinic-membership-role.enum';
+import { CountriesService } from '../common/countries.service';
+import { CountryMetadata } from '../common/interfaces/country-metadata.interface';
 
 @Injectable()
 export class ClinicsService {
@@ -24,12 +26,16 @@ export class ClinicsService {
     private readonly clinicMembershipRepository: Repository<ClinicMembership>,
 
     private readonly dataSource: DataSource,
+
+    private readonly countriesService: CountriesService,
   ) {}
 
   async create(ownerUserId: string, createClinicDto: CreateClinicDto) {
     try {
+      const clinicData = await this.applyCountryDefaults(createClinicDto);
+
       return await this.dataSource.transaction(async (manager) => {
-        const clinic = manager.create(Clinic, createClinicDto);
+        const clinic = manager.create(Clinic, clinicData);
         const savedClinic = await manager.save(clinic);
 
         const ownerMembership = manager.create(ClinicMembership, {
@@ -116,7 +122,8 @@ export class ClinicsService {
     this.ensureClinicScope(scopedClinicId, id);
 
     const clinic = await this.findOne(id);
-    Object.assign(clinic, updateClinicDto);
+    const clinicData = await this.applyCountryDefaults(updateClinicDto);
+    Object.assign(clinic, clinicData);
 
     try {
       return await this.clinicRepository.save(clinic);
@@ -139,6 +146,32 @@ export class ClinicsService {
         'Clinic id does not match x-clinic-id scope',
       );
     }
+  }
+
+  private async applyCountryDefaults<
+    T extends CreateClinicDto | UpdateClinicDto,
+  >(dto: T): Promise<T & Partial<Clinic>> {
+    if (!dto.countryCode) {
+      return dto;
+    }
+
+    const country = await this.countriesService.findByCode(dto.countryCode);
+
+    return {
+      ...dto,
+      ...this.mapCountryToClinic(country),
+      ...(dto.currency ? { currency: dto.currency } : {}),
+    };
+  }
+
+  private mapCountryToClinic(country: CountryMetadata): Partial<Clinic> {
+    return {
+      countryCode: country.countryCode,
+      countryName: country.countryName,
+      currency: country.defaultCurrency,
+      callingCodes: country.callingCodes,
+      defaultCallingCode: country.defaultCallingCode,
+    };
   }
 
   private handleDBErrors(error: unknown): never {

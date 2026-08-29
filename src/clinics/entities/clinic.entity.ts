@@ -36,8 +36,23 @@ export class Clinic {
   @Column('text', { default: 'America/Montevideo' })
   timezone: string;
 
+  @Column('text', { default: 'UY' })
+  countryCode: string;
+
+  @Column('text', { default: 'Uruguay' })
+  countryName: string;
+
   @Column('text', { default: 'USD' })
   currency: string;
+
+  @Column('text', {
+    array: true,
+    default: () => "ARRAY['598']::text[]",
+  })
+  callingCodes: string[];
+
+  @Column('text', { default: '598' })
+  defaultCallingCode: string;
 
   @Column('jsonb', { default: {} })
   workingHoursJson: Record<string, unknown>;

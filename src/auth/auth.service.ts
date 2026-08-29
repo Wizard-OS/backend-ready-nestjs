@@ -303,6 +303,11 @@ export class AuthService {
     return memberships.map((membership) => ({
       clinicId: membership.clinicId,
       clinicName: membership.clinic.name,
+      clinicCountryCode: membership.clinic.countryCode,
+      clinicCountryName: membership.clinic.countryName,
+      clinicCurrency: membership.clinic.currency,
+      clinicCallingCodes: membership.clinic.callingCodes,
+      clinicDefaultCallingCode: membership.clinic.defaultCallingCode,
       membershipId: membership.id,
       role: membership.role,
       permissionsJson: membership.permissionsJson ?? {},

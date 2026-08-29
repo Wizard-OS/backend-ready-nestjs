@@ -4,6 +4,7 @@ import {
   IsOptional,
   IsString,
   Length,
+  Matches,
   MaxLength,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -56,6 +57,15 @@ export class CreateClinicDto {
   @IsString()
   @IsOptional()
   timezone?: string;
+
+  @ApiPropertyOptional({
+    example: 'UY',
+    description: 'Código ISO alpha-2 del país de la clínica',
+  })
+  @IsString()
+  @Matches(/^[A-Za-z]{2}$/)
+  @IsOptional()
+  countryCode?: string;
 
   @ApiPropertyOptional({ example: 'MXN', description: 'Moneda' })
   @IsString()

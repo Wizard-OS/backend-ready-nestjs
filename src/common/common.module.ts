@@ -7,6 +7,8 @@ import { ApiMessageTranslatorService } from './i18n/api-message-translator.servi
 
 import { CommonService } from './common.service';
 import { CommonController } from './common.controller';
+import { CountriesController } from './countries.controller';
+import { CountriesService } from './countries.service';
 import { Invoice } from '../invoices/entities/invoice.entity';
 import { Payment } from '../payments/entities/payment.entity';
 import { Expense } from '../expenses/entities/expense.entity';
@@ -25,14 +27,16 @@ import { Treatment } from '../treatments/entities/treatment.entity';
       Treatment,
     ]),
   ],
-  controllers: [CommonController],
+  controllers: [CommonController, CountriesController],
   providers: [
     CommonService,
+    CountriesService,
     ApiMessageTranslatorService,
     I18nHttpExceptionFilter,
     I18nResponseInterceptor,
   ],
   exports: [
+    CountriesService,
     ApiMessageTranslatorService,
     I18nHttpExceptionFilter,
     I18nResponseInterceptor,
