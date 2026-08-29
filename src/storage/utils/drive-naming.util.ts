@@ -46,6 +46,7 @@ export function buildPatientFolderName(patientId: string): string {
 export function folderForPatientFileType(
   type: PatientFileType,
 ): PatientDriveFolder {
+  if (type === PatientFileType.PROFILE_PHOTO) return 'avatar';
   if (type === PatientFileType.RADIOGRAPHY) return 'radiographs';
   if (type === PatientFileType.IMAGE) return 'clinical-images';
   if (type === PatientFileType.PDF || type === PatientFileType.DOCUMENT) {
@@ -59,7 +60,8 @@ export function patientFileTypeFromDriveFolder(
   folder: string,
 ): PatientFileType {
   if (folder === 'radiographs') return PatientFileType.RADIOGRAPHY;
-  if (folder === 'clinical-images' || folder === 'avatar') {
+  if (folder === 'avatar') return PatientFileType.PROFILE_PHOTO;
+  if (folder === 'clinical-images') {
     return PatientFileType.IMAGE;
   }
   if (folder === 'documents') return PatientFileType.DOCUMENT;
@@ -75,6 +77,7 @@ export function buildDriveFileName(
   const date = now.toISOString().slice(0, 10);
   const extension = path.extname(originalName).toLowerCase();
   const prefixByType: Record<PatientFileType, string> = {
+    [PatientFileType.PROFILE_PHOTO]: 'profile-photo',
     [PatientFileType.IMAGE]: 'clinical-image',
     [PatientFileType.RADIOGRAPHY]: 'rx',
     [PatientFileType.PDF]: 'document',

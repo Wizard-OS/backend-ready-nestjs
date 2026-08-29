@@ -20,6 +20,7 @@ import { Appointment } from '../../appointments/entities/appointment.entity';
 import { ClinicalRecord } from '../../clinical-records/entities/clinical-record.entity';
 import { Invoice } from '../../invoices/entities/invoice.entity';
 import { Clinic } from '../../clinics/entities/clinic.entity';
+import { PatientFile } from '../../patient-files/entities/patient-file.entity';
 
 @Entity('patients')
 @Index(['clinicId'])
@@ -71,7 +72,51 @@ export class Patient {
   @Column('text', {
     nullable: true,
   })
+  profession: string | null;
+
+  @Column('text', {
+    nullable: true,
+  })
+  streetAddress: string | null;
+
+  @Column('text', {
+    nullable: true,
+  })
+  addressNumber: string | null;
+
+  @Column('text', {
+    nullable: true,
+  })
+  neighborhood: string | null;
+
+  @Column('text', {
+    nullable: true,
+  })
+  city: string | null;
+
+  @Column('text', {
+    nullable: true,
+  })
+  postalCode: string | null;
+
+  @Column('text', {
+    nullable: true,
+  })
   phone: string | null;
+
+  @ManyToOne(() => PatientFile, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'profilePhotoFileId' })
+  profilePhotoFile: PatientFile | null;
+
+  @Column('uuid', {
+    nullable: true,
+  })
+  profilePhotoFileId: string | null;
+
+  @Column('text', {
+    nullable: true,
+  })
+  profilePhotoUrl: string | null;
 
   @Column('text', {
     nullable: true,
@@ -125,6 +170,30 @@ export class Patient {
 
     if (this.phone) {
       this.phone = this.phone.trim();
+    }
+
+    if (this.profession) {
+      this.profession = this.profession.trim();
+    }
+
+    if (this.streetAddress) {
+      this.streetAddress = this.streetAddress.trim();
+    }
+
+    if (this.addressNumber) {
+      this.addressNumber = this.addressNumber.trim();
+    }
+
+    if (this.neighborhood) {
+      this.neighborhood = this.neighborhood.trim();
+    }
+
+    if (this.city) {
+      this.city = this.city.trim();
+    }
+
+    if (this.postalCode) {
+      this.postalCode = this.postalCode.trim();
     }
   }
 

@@ -23,6 +23,9 @@ describe('drive naming utilities', () => {
   });
 
   it('maps patient file types to expected Drive folders', () => {
+    expect(folderForPatientFileType(PatientFileType.PROFILE_PHOTO)).toBe(
+      'avatar',
+    );
     expect(folderForPatientFileType(PatientFileType.RADIOGRAPHY)).toBe(
       'radiographs',
     );
@@ -34,6 +37,9 @@ describe('drive naming utilities', () => {
   });
 
   it('infers patient file types from Drive folder names', () => {
+    expect(patientFileTypeFromDriveFolder('avatar')).toBe(
+      PatientFileType.PROFILE_PHOTO,
+    );
     expect(patientFileTypeFromDriveFolder('radiographs')).toBe(
       PatientFileType.RADIOGRAPHY,
     );

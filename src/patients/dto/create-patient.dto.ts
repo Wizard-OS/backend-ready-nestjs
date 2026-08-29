@@ -72,12 +72,84 @@ export class CreatePatientDto {
   address: string;
 
   @ApiPropertyOptional({
+    example: 'Arquitecto',
+    description: 'Profesión del paciente',
+  })
+  @IsString()
+  @MaxLength(120)
+  @IsOptional()
+  profession?: string;
+
+  @ApiPropertyOptional({
+    example: 'Av. Principal',
+    description: 'Calle de la dirección del paciente',
+  })
+  @IsString()
+  @MaxLength(180)
+  @IsOptional()
+  streetAddress?: string;
+
+  @ApiPropertyOptional({
+    example: '1234',
+    description: 'Número de puerta o domicilio',
+  })
+  @IsString()
+  @MaxLength(40)
+  @IsOptional()
+  addressNumber?: string;
+
+  @ApiPropertyOptional({
+    example: 'Pocitos',
+    description: 'Barrio del paciente',
+  })
+  @IsString()
+  @MaxLength(120)
+  @IsOptional()
+  neighborhood?: string;
+
+  @ApiPropertyOptional({
+    example: 'Montevideo',
+    description: 'Localidad o ciudad del paciente',
+  })
+  @IsString()
+  @MaxLength(120)
+  @IsOptional()
+  city?: string;
+
+  @ApiPropertyOptional({
+    example: '11300',
+    description: 'Código postal del paciente',
+  })
+  @IsString()
+  @MaxLength(40)
+  @IsOptional()
+  postalCode?: string;
+
+  @ApiPropertyOptional({
     example: '+5491112345678',
     description: 'Teléfono',
   })
   @IsString()
   @IsOptional()
   phone: string;
+
+  @ApiPropertyOptional({
+    example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+    description:
+      'UUID del archivo usado como foto de perfil. Se administra con el endpoint de foto.',
+  })
+  @IsUUID()
+  @IsOptional()
+  profilePhotoFileId?: string;
+
+  @ApiPropertyOptional({
+    example: 'https://example.com/uploads/patient-files/foto.jpg',
+    description:
+      'URL de la foto de perfil. Se administra con el endpoint de foto.',
+  })
+  @IsString()
+  @IsOptional()
+  profilePhotoUrl?: string;
 
   @ApiPropertyOptional({
     example: 'Laura López +59891111111',

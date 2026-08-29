@@ -32,6 +32,7 @@ export class PatientsService {
     createPatientDto: CreatePatientDto,
   ) {
     this.patientAccessService.assertCanManagePatients(context);
+    this.assertProfilePhotoManagedSeparately(createPatientDto);
 
     if (
       createPatientDto.clinicId &&
@@ -141,6 +142,7 @@ export class PatientsService {
     updatePatientDto: UpdatePatientDto,
   ) {
     this.patientAccessService.assertCanManagePatients(context);
+    this.assertProfilePhotoManagedSeparately(updatePatientDto);
     const patient = await this.findOne(context, id);
 
     if (
@@ -196,5 +198,15 @@ export class PatientsService {
     console.log(error);
 
     throw new InternalServerErrorException('Please check server logs');
+  }
+
+  private assertProfilePhotoManagedSeparately(
+    dto: Pick<CreatePatientDto, 'profilePhotoFileId' | 'profilePhotoUrl'>,
+  ) {
+    if (dto.profilePhotoFileId || dto.profilePhotoUrl) {
+      throw new BadRequestException(
+        'Profile photo must be uploaded through /patients/:patientId/profile-photo',
+      );
+    }
   }
 }

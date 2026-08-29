@@ -134,6 +134,68 @@ export class PatientFilesController {
     );
   }
 
+  @Post('patients/:patientId/profile-photo')
+  @ApiOperation({ summary: 'Subir foto de perfil del paciente' })
+  @ApiConsumes('multipart/form-data')
+  @ApiParam({ name: 'patientId', description: 'UUID del paciente' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: { type: 'string', format: 'binary' },
+      },
+    },
+  })
+  @ApiResponse({ status: 201, description: 'Foto de perfil actualizada' })
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: (req, file, cb) => {
+          const uploadDir = path.join(
+            process.cwd(),
+            'uploads',
+            'patient-files',
+          );
+          fs.mkdirSync(uploadDir, { recursive: true });
+          cb(null, uploadDir);
+        },
+        filename: (req, file, cb) => {
+          const ext = extname(file.originalname) || '';
+          cb(null, `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`);
+        },
+      }),
+      fileFilter: (req, file, cb) => {
+        if (file.mimetype.startsWith('image/')) {
+          return cb(null, true);
+        }
+
+        return cb(
+          new BadRequestException('Profile photo must be an image'),
+          false,
+        );
+      },
+      limits: { fileSize: 10 * 1024 * 1024 },
+    }),
+  )
+  createProfilePhoto(
+    @GetClinicId() clinicId: string,
+    @GetClinicMembershipId() membershipId: string,
+    @GetClinicMembershipRole() role: ClinicMembershipRole,
+    @GetClinicPermissions() permissionsJson: Record<string, boolean>,
+    @Param('patientId') patientId: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Req() request: Request,
+  ) {
+    const baseUrl = `${request.protocol}://${request.get('host')}`;
+    return this.patientFilesService.createProfilePhoto(
+      this.context(clinicId, membershipId, role, permissionsJson),
+      patientId,
+      membershipId,
+      file,
+      baseUrl,
+    );
+  }
+
   @Get('patients/:patientId/files')
   @ApiOperation({ summary: 'Listar archivos del paciente' })
   @ApiParam({ name: 'patientId', description: 'UUID del paciente' })

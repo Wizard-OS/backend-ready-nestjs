@@ -214,6 +214,11 @@ export class PatientAccessService {
     sanitized.email = null;
     sanitized.phone = null;
     sanitized.address = null;
+    sanitized.streetAddress = null;
+    sanitized.addressNumber = null;
+    sanitized.neighborhood = null;
+    sanitized.city = null;
+    sanitized.postalCode = null;
     sanitized.emergencyContact = null;
     return patient;
   }

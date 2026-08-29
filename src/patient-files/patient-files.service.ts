@@ -173,6 +173,102 @@ export class PatientFilesService {
     return await this.patientFileRepository.save(patientFile);
   }
 
+  async createProfilePhoto(
+    context: ClinicAccessContext,
+    patientId: string,
+    uploadedByMembershipId: string,
+    file: Express.Multer.File,
+    baseUrl: string,
+  ) {
+    if (!file) {
+      throw new BadRequestException('No file uploaded');
+    }
+
+    if (!file.mimetype.startsWith('image/')) {
+      await fs.unlink(file.path).catch(() => undefined);
+      throw new BadRequestException('Profile photo must be an image');
+    }
+
+    this.patientAccessService.assertCanManagePatients(context);
+    await this.patientAccessService.assertPatientAccessible(context, patientId);
+    const patient = await this.findPatientInClinic(patientId, context.clinicId);
+
+    try {
+      await this.membershipService.assertCanStoreFile(
+        context.clinicId,
+        file.size,
+      );
+    } catch (error) {
+      await fs.unlink(file.path).catch(() => undefined);
+      throw error;
+    }
+
+    const patientFileId = randomUUID();
+    const checksum = await this.calculateChecksum(file.path);
+    let storageResult;
+
+    try {
+      storageResult = await this.storageService.upload({
+        clinicId: context.clinicId,
+        clinicName: patient.clinic.name,
+        patient,
+        fileId: patientFileId,
+        file,
+        type: PatientFileType.PROFILE_PHOTO,
+        checksum,
+        baseUrl,
+        relation: {
+          appointmentId: null,
+          clinicalNoteId: null,
+          treatmentId: null,
+        },
+      });
+    } catch (error) {
+      await fs.unlink(file.path).catch(() => undefined);
+      throw error;
+    }
+
+    if (storageResult.storageProvider === StorageProviderType.GOOGLE_DRIVE) {
+      await fs.unlink(file.path).catch(() => undefined);
+    }
+
+    const patientFile = this.patientFileRepository.create({
+      id: patientFileId,
+      patientId,
+      appointmentId: null,
+      clinicalNoteId: null,
+      treatmentId: null,
+      uploadedByMembershipId,
+      type: PatientFileType.PROFILE_PHOTO,
+      description: 'Foto de perfil',
+      originalName: file.originalname,
+      storedName: storageResult.storedName,
+      path: storageResult.path,
+      url: storageResult.url,
+      mimeType: storageResult.mimeType,
+      size: storageResult.size,
+      storageProvider: storageResult.storageProvider,
+      storageStatus: PatientFileStorageStatus.AVAILABLE,
+      syncSource: PatientFileSyncSource.APP,
+      driveFileId: storageResult.driveFileId ?? null,
+      driveFolderId: storageResult.driveFolderId ?? null,
+      checksum,
+      driveModifiedAt: storageResult.driveModifiedAt ?? null,
+      externalMetadataJson: storageResult.externalMetadataJson ?? {},
+    });
+
+    const savedFile = await this.patientFileRepository.save(patientFile);
+    await this.patientRepository.update(
+      { id: patientId, clinicId: context.clinicId },
+      {
+        profilePhotoFileId: savedFile.id,
+        profilePhotoUrl: savedFile.url,
+      },
+    );
+
+    return savedFile;
+  }
+
   async createGenerated(
     context: ClinicAccessContext,
     patientId: string,
@@ -316,6 +412,11 @@ export class PatientFilesService {
     } else {
       await this.patientFileRepository.softRemove(patientFile);
     }
+
+    await this.patientRepository.update(
+      { id: patientFile.patientId, profilePhotoFileId: patientFile.id },
+      { profilePhotoFileId: null, profilePhotoUrl: null },
+    );
 
     return { message: `Patient file ${id} deleted` };
   }
