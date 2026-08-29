@@ -16,6 +16,7 @@ describe('Multi-tenant clinic scope (e2e)', () => {
   let receptionistUserId: string;
   let clinicMainId: string;
   let clinicEastId: string;
+  let newClinicId: string;
   let patientAnaId: string;
 
   beforeAll(async () => {
@@ -97,6 +98,30 @@ describe('Multi-tenant clinic scope (e2e)', () => {
         expect.objectContaining({
           clinicId: clinicMainId,
           role: 'owner',
+          clinicCountryCode: 'UY',
+          clinicCountryName: 'Uruguay',
+          clinicCurrency: 'USD',
+          clinicCallingCodes: ['598'],
+          clinicDefaultCallingCode: '598',
+        }),
+      ]),
+    );
+  });
+
+  it('returns fallback country metadata for authenticated users', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/common/countries')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+
+    expect(response.body).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          countryCode: 'UY',
+          countryName: 'Uruguay',
+          defaultCurrency: 'UYU',
+          callingCodes: ['598'],
+          defaultCallingCode: '598',
         }),
       ]),
     );
@@ -222,6 +247,17 @@ describe('Multi-tenant clinic scope (e2e)', () => {
       })
       .expect(201);
 
+    newClinicId = clinic.body.id;
+    expect(clinic.body).toEqual(
+      expect.objectContaining({
+        countryCode: 'UY',
+        countryName: 'Uruguay',
+        currency: 'USD',
+        callingCodes: ['598'],
+        defaultCallingCode: '598',
+      }),
+    );
+
     const memberships = await request(app.getHttpServer())
       .get('/clinic-memberships')
       .set('Authorization', `Bearer ${adminToken}`)
@@ -236,6 +272,47 @@ describe('Multi-tenant clinic scope (e2e)', () => {
           role: 'owner',
         }),
       ]),
+    );
+  });
+
+  it('derives country metadata on update and respects currency override', async () => {
+    const derived = await request(app.getHttpServer())
+      .patch(`/clinics/${newClinicId}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .set('x-clinic-id', newClinicId)
+      .send({
+        countryCode: 'uy',
+      })
+      .expect(200);
+
+    expect(derived.body).toEqual(
+      expect.objectContaining({
+        countryCode: 'UY',
+        countryName: 'Uruguay',
+        currency: 'UYU',
+        callingCodes: ['598'],
+        defaultCallingCode: '598',
+      }),
+    );
+
+    const overridden = await request(app.getHttpServer())
+      .patch(`/clinics/${newClinicId}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .set('x-clinic-id', newClinicId)
+      .send({
+        countryCode: 'UY',
+        currency: 'USD',
+      })
+      .expect(200);
+
+    expect(overridden.body).toEqual(
+      expect.objectContaining({
+        countryCode: 'UY',
+        countryName: 'Uruguay',
+        currency: 'USD',
+        callingCodes: ['598'],
+        defaultCallingCode: '598',
+      }),
     );
   });
 });

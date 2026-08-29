@@ -92,7 +92,7 @@ describe('Phase 1 Flow (e2e)', () => {
         email: `clinic_${Date.now()}@example.com`,
         address: 'Av. Principal 123',
         timezone: 'America/Montevideo',
-        currency: 'USD',
+        countryCode: 'UY',
         workingHoursJson: {
           monday: [{ from: '09:00', to: '18:00' }],
         },
@@ -100,6 +100,15 @@ describe('Phase 1 Flow (e2e)', () => {
       .expect(201);
 
     clinicId = clinicResponse.body.id;
+    expect(clinicResponse.body).toEqual(
+      expect.objectContaining({
+        countryCode: 'UY',
+        countryName: 'Uruguay',
+        currency: 'UYU',
+        callingCodes: ['598'],
+        defaultCallingCode: '598',
+      }),
+    );
 
     const membershipsResponse = await request(app.getHttpServer())
       .get('/clinic-memberships')
@@ -167,6 +176,12 @@ describe('Phase 1 Flow (e2e)', () => {
         documentId: patientDocumentId,
         birthDate: '1993-08-20',
         gender: 'Female',
+        profession: 'Arquitecta',
+        streetAddress: 'Av. Principal',
+        addressNumber: '1234',
+        neighborhood: 'Centro',
+        city: 'Montevideo',
+        postalCode: '11000',
         phone: `+5989${Date.now().toString().slice(-8)}`,
         emergencyContact: 'Laura Perez +59891111111',
         medicalHistory: 'Sin alergias conocidas',
@@ -176,6 +191,18 @@ describe('Phase 1 Flow (e2e)', () => {
       .expect(201);
 
     patientId = patientResponse.body.id;
+    expect(patientResponse.body).toEqual(
+      expect.objectContaining({
+        profession: 'Arquitecta',
+        streetAddress: 'Av. Principal',
+        addressNumber: '1234',
+        neighborhood: 'Centro',
+        city: 'Montevideo',
+        postalCode: '11000',
+        profilePhotoFileId: null,
+        profilePhotoUrl: null,
+      }),
+    );
 
     const patientByDocument = await request(app.getHttpServer())
       .get(`/patients/${patientDocumentId}`)
@@ -220,6 +247,30 @@ describe('Phase 1 Flow (e2e)', () => {
     appointmentId = appointmentResponse.body.id;
   });
 
+  it('updates patient profile capture fields partially', async () => {
+    const updateResponse = await request(app.getHttpServer())
+      .patch(`/patients/${patientId}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .set('x-clinic-id', clinicId)
+      .send({
+        profession: 'Diseñadora',
+        addressNumber: '5678',
+        postalCode: '11200',
+      })
+      .expect(200);
+
+    expect(updateResponse.body).toEqual(
+      expect.objectContaining({
+        profession: 'Diseñadora',
+        streetAddress: 'Av. Principal',
+        addressNumber: '5678',
+        neighborhood: 'Centro',
+        city: 'Montevideo',
+        postalCode: '11200',
+      }),
+    );
+  });
+
   it('allows odontologists to create and list patients without contact data', async () => {
     const doctorCreatedPatient = await request(app.getHttpServer())
       .post('/patients/create')
@@ -251,6 +302,11 @@ describe('Phase 1 Flow (e2e)', () => {
         gender: 'Other',
         phone: `+5987${Date.now().toString().slice(-8)}`,
         address: 'Dirección reservada',
+        streetAddress: 'Calle Reservada',
+        addressNumber: '999',
+        neighborhood: 'Barrio Reservado',
+        city: 'Ciudad Reservada',
+        postalCode: '99999',
         emergencyContact: 'Contacto reservado',
       })
       .expect(201);
@@ -283,6 +339,11 @@ describe('Phase 1 Flow (e2e)', () => {
           phone: null,
           email: null,
           address: null,
+          streetAddress: null,
+          addressNumber: null,
+          neighborhood: null,
+          city: null,
+          postalCode: null,
           emergencyContact: null,
         }),
         expect.objectContaining({
@@ -295,6 +356,11 @@ describe('Phase 1 Flow (e2e)', () => {
           phone: null,
           email: null,
           address: null,
+          streetAddress: null,
+          addressNumber: null,
+          neighborhood: null,
+          city: null,
+          postalCode: null,
           emergencyContact: null,
         }),
       ]),
@@ -312,6 +378,11 @@ describe('Phase 1 Flow (e2e)', () => {
         phone: null,
         email: null,
         address: null,
+        streetAddress: null,
+        addressNumber: null,
+        neighborhood: null,
+        city: null,
+        postalCode: null,
         emergencyContact: null,
       }),
     );
@@ -790,6 +861,62 @@ describe('Phase 1 Flow (e2e)', () => {
       .set('Authorization', `Bearer ${adminToken}`)
       .set('x-clinic-id', clinicId)
       .expect(404);
+  });
+
+  it('uploads profile photo and stores it as the patient primary photo', async () => {
+    const profilePhotoResponse = await request(app.getHttpServer())
+      .post(`/patients/${patientId}/profile-photo`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .set('x-clinic-id', clinicId)
+      .attach('file', Buffer.from('profile image'), {
+        filename: 'profile.jpg',
+        contentType: 'image/jpeg',
+      })
+      .expect(201);
+
+    expect(profilePhotoResponse.body).toEqual(
+      expect.objectContaining({
+        patientId,
+        type: 'profile_photo',
+        mimeType: 'image/jpeg',
+      }),
+    );
+    expect(profilePhotoResponse.body.url).toContain('/uploads/patient-files/');
+    expect(fs.existsSync(profilePhotoResponse.body.path)).toBe(true);
+
+    const patientResponse = await request(app.getHttpServer())
+      .get(`/patients/${patientId}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .set('x-clinic-id', clinicId)
+      .expect(200);
+
+    expect(patientResponse.body).toEqual(
+      expect.objectContaining({
+        profilePhotoFileId: profilePhotoResponse.body.id,
+        profilePhotoUrl: profilePhotoResponse.body.url,
+      }),
+    );
+
+    await request(app.getHttpServer())
+      .delete(`/patient-files/${profilePhotoResponse.body.id}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .set('x-clinic-id', clinicId)
+      .expect(200);
+
+    expect(fs.existsSync(profilePhotoResponse.body.path)).toBe(false);
+
+    const patientWithoutProfilePhoto = await request(app.getHttpServer())
+      .get(`/patients/${patientId}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .set('x-clinic-id', clinicId)
+      .expect(200);
+
+    expect(patientWithoutProfilePhoto.body).toEqual(
+      expect.objectContaining({
+        profilePhotoFileId: null,
+        profilePhotoUrl: null,
+      }),
+    );
   });
 
   it('returns minimum phase 1 reports', async () => {

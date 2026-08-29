@@ -22,7 +22,11 @@ export interface SeedClinic {
   code: string;
   name: string;
   timezone: string;
+  countryCode?: string;
+  countryName?: string;
   currency: string;
+  callingCodes?: string[];
+  defaultCallingCode?: string;
   phone?: string;
   email?: string;
   address?: string;
@@ -47,6 +51,12 @@ export interface SeedPatient {
   gender: Gender;
   documentId?: string;
   address?: string;
+  profession?: string;
+  streetAddress?: string;
+  addressNumber?: string;
+  neighborhood?: string;
+  city?: string;
+  postalCode?: string;
   phone?: string;
   emergencyContact?: string;
   observations?: string;
@@ -147,7 +157,11 @@ export const initialData: SeedData = {
       code: 'clinic-main',
       name: 'Dental Hub Centro',
       timezone: 'America/Montevideo',
+      countryCode: 'UY',
+      countryName: 'Uruguay',
       currency: 'USD',
+      callingCodes: ['598'],
+      defaultCallingCode: '598',
       phone: '+59824000000',
       email: 'centro@dentalhub.com',
       address: 'Av. 18 de Julio 1234',
@@ -163,7 +177,11 @@ export const initialData: SeedData = {
       code: 'clinic-east',
       name: 'Dental Hub Pocitos',
       timezone: 'America/Montevideo',
+      countryCode: 'UY',
+      countryName: 'Uruguay',
       currency: 'USD',
+      callingCodes: ['598'],
+      defaultCallingCode: '598',
     },
   ],
   users: [

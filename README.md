@@ -101,8 +101,14 @@ Variables clave:
 - `ENABLE_SEED_ENDPOINT`:
   - `false` (o no definido): deshabilita el endpoint de seed en producción
   - `true`: habilita `GET /api/seed` incluso con `NODE_ENV=production` (solo para entornos controlados)
+- `REST_COUNTRIES_BASE_URL`: URL base de Rest Countries v5 (default `https://api.restcountries.com/countries/v5`)
+- `REST_COUNTRIES_API_KEY`: API key bearer de Rest Countries. Si no está definida, el backend solo puede servir el fallback local de Uruguay para no romper clínicas existentes.
 
 Nota: en producción se deben aplicar migraciones SQL y mantener `DB_SYNCHRONIZE=false`.
+
+### País, moneda y prefijo telefónico por clínica
+
+Las clínicas guardan `countryCode`, `countryName`, `currency`, `callingCodes` y `defaultCallingCode`. `countryCode` es el único dato de país editable desde los DTOs; el backend resuelve nombre, moneda y prefijos mediante Rest Countries v5, cachea el catálogo 24 horas y sirve cache stale si la API falla. Las respuestas de auth incluyen esos defaults dentro de `memberships[]` para que el cliente prellene teléfonos de miembros y pacientes.
 
 ## Deploy en Render Free con Neon o Supabase
 
@@ -172,6 +178,7 @@ DB_SYNCHRONIZE=false
 ENABLE_SEED_ENDPOINT=false
 JWT_SECRET=<secreto-largo>
 INTEGRATION_TOKEN_ENCRYPTION_KEY=<secreto-largo-o-64-hex>
+REST_COUNTRIES_API_KEY=<api-key-rest-countries>
 HOST_API=https://<tu-servicio>.onrender.com/api
 ```
 
